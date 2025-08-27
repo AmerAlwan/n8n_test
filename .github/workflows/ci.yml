@@ -52,7 +52,6 @@ jobs:
           echo "CREDS_PATH=${CREDS_PATH}" >> .env
           echo "WEBHOOK_URL=${WEBHOOK_URL}" >> .env
           echo "OPENROUTER_ACCOUNT_APIKEY=${OPENROUTER_ACCOUNT_APIKEY}" >> .env
-          
 
       - name: Patch credentials.json with env values
         run: |
@@ -73,18 +72,6 @@ jobs:
             -p 5432:5432 \
             postgres:15-alpine
 
-      - name: Create users table for tests
-        run: |
-         docker exec db psql -U admin -d test -c "
-          CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            username VARCHAR(255) NOT NULL,
-            email VARCHAR(255) NOT NULL,
-            password VARCHAR(255) NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-          );
-        "
-
       - name: Wait for postgres to be healthy
         run: |
           for i in {1..15}; do
@@ -98,6 +85,18 @@ jobs:
           echo "Postgres did not become healthy in time"
           docker logs db
           exit 1
+
+      - name: Create users table for tests
+        run: |
+          docker exec db psql -U ${POSTGRES_USER} -d ${POSTGRES_DB} -c "
+            CREATE TABLE IF NOT EXISTS users (
+              id SERIAL PRIMARY KEY,
+              username VARCHAR(255) NOT NULL,
+              email VARCHAR(255) NOT NULL,
+              password VARCHAR(255) NOT NULL,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+          "
 
       - name: Start n8n Docker container
         run: |
@@ -149,6 +148,15 @@ jobs:
       - name: Run Jest tests
         env:
           N8N_CLI: docker exec n8n-test n8n
+          POSTGRES_ACCOUNT_HOST: localhost
+          POSTGRES_ACCOUNT_DATABASE: test
+          POSTGRES_ACCOUNT_USER: admin
+          POSTGRES_ACCOUNT_PASSWORD: admin
+          POSTGRES_ACCOUNT_PORT: 5432
+          WORKFLOWS_PATH: workflows
+          CREDS_PATH: credentials/credentials.json
+          WEBHOOK_URL: http://localhost:5678/webhook/16bc0461-12ad-4933-bb1d-00e0a3fd8cd9
+          OPENROUTER_ACCOUNT_APIKEY: sk
         run: npm test
 
       - name: Show n8n logs on failure
