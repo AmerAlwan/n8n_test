@@ -130,7 +130,7 @@ jobs:
 
       - name: Install workflow tester dependencies inside n8n container
         run: |
-          docker exec n8n-test bash -c "cd /n8n-workflow-tester && npm install"
+          docker exec n8n-test sh -c "cd /n8n-workflow-tester && npm install"
 
       - name: Import credentials via n8n CLI
         run: |
@@ -142,7 +142,7 @@ jobs:
 
       - name: Run Jest tests inside n8n container
         run: |
-          docker exec n8n-test bash -c "set -a && [ -f /n8n-workflow-tester/.env ] && . /n8n-workflow-tester/.env && cd /n8n-workflow-tester && npm test"
+          docker exec n8n-test sh -c "set -a && [ -f /n8n-workflow-tester/.env ] && . /n8n-workflow-tester/.env && cd /n8n-workflow-tester && npm test"
       - name: Show n8n logs on failure
         if: failure()
         run: docker logs n8n-test
