@@ -19,9 +19,6 @@ const WORKFLOW_ID = 'YAHdeeXkYbwOOQJk';
 const WORKFLOW_PATH = process.env.WORKFLOWS_PATH ? __dirname + "/../" + process.env.WORKFLOWS_PATH + "/YAHdeeXkYbwOOQJk.json" : __dirname + '/../workflows/YAHdeeXkYbwOOQJk.json';
 const CREDS_PATH = process.env.CREDS_PATH ? __dirname + "/../" + process.env.CREDS_PATH : __dirname + '/../credentials/credentials.json';
 
-// If you run n8n in docker, set container name/id here or via env
-const RUNNER = { type: 'local' };
-
 // If you want to run the webhook test, set an actual URL here or via env
 const WEBHOOK_URL = process.env.WEBHOOK_URL || 'http://localhost:5678/webhook/16bc0461-12ad-4933-bb1d-00e0a3fd8cd9'
 
@@ -38,8 +35,7 @@ async function resetDatabase() {
 const n8nTester = new N8NTester({
   id: WORKFLOW_ID,
   workflow: WORKFLOW_PATH,
-  credentials: CREDS_PATH,
-  runner: RUNNER,
+  credentials: CREDS_PATH
 });
 
 jest.setTimeout(60_000); // n8n CLI + docker can be a bit slow

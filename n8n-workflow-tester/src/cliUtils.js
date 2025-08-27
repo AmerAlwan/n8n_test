@@ -10,8 +10,8 @@ const execAsync = promisify(exec);
 async function runN8n({ runner, args }) {
   const quoted = args.map(a => (/\s/.test(a) ? `"${a.replace(/"/g, '\\"')}"` : a)).join(' ');
   let cmd;
-  if (runner?.type === 'docker') {
-    const container = runner.container;
+  if (runner === 'docker') {
+    const container = runner;
     if (!container) throw new Error('runner.container is required for docker runner');
     cmd = `docker exec ${container} n8n ${quoted}`;
   } else {

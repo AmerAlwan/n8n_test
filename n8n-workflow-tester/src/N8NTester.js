@@ -113,7 +113,6 @@ class N8NTester {
    * @param {string} opts.id - workflow id in n8n
    * @param {string} opts.workflow - path to exported workflow JSON (the ORIGINAL)
    * @param {string} [opts.credentials] - path to exported credentials JSON (optional)
-   * @param {Object} [opts.runner] - { type: 'local' } or { type: 'docker', container: 'id_or_name' }
    */
   constructor(opts) {
     if (!opts || !opts.id || !opts.workflow) {
@@ -122,7 +121,7 @@ class N8NTester {
     this.id = opts.id;
     this.workflowPath = opts.workflow;
     this.credentialsPath = opts.credentials || null;
-    this._runner = opts.runner || { type: 'local' };
+    this._runner = process.env.N8N_CONTAINER_NAME || null;
     this._tmpDir = path.join(os.tmpdir(), `n8n-tester-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     this._credsPatch = []; // { name, data }
   }
