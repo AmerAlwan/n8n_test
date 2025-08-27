@@ -21,6 +21,7 @@ jobs:
       WORKFLOWS_PATH: workflows
       CREDS_PATH: credentials/credentials.json
       WEBHOOK_URL: http://localhost:5678/webhook/16bc0461-12ad-4933-bb1d-00e0a3fd8cd9
+      OPENROUTER_ACCOUNT_APIKEY: sk
       N8N_HOST: localhost
       N8N_PORT: 5678
 
@@ -50,12 +51,14 @@ jobs:
           echo "WORKFLOWS_PATH=${WORKFLOWS_PATH}" >> .env
           echo "CREDS_PATH=${CREDS_PATH}" >> .env
           echo "WEBHOOK_URL=${WEBHOOK_URL}" >> .env
+          echo "OPENROUTER_ACCOUNT_APIKEY=${OPENROUTER_ACCOUNT_APIKEY}" >> .env
+          
 
       - name: Patch credentials.json with env values
         run: |
-          cp credentials/credentials.json credentials/credentials.patched.json
-          envsubst < credentials/credentials.patched.json > credentials/credentials.patched.json.tmp
-          mv credentials/credentials.patched.json.tmp credentials/credentials.patched.json
+          envsubst < credentials/credentials.json > credentials/credentials.patched.json.tmp
+          mv credentials/credentials.patched.json.tmp credentials/credentials.json
+          cat credentials/credentials.json
 
       - name: Create Docker network
         run: docker network create n8n-net
@@ -125,7 +128,7 @@ jobs:
 
       - name: Import credentials via n8n CLI
         run: |
-          docker exec n8n-test n8n import:credentials --input /home/node/.n8n/credentials/credentials.patched.json --overwrite
+          docker exec n8n-test n8n import:credentials --input /home/node/.n8n/credentials/credentials.json --overwrite
 
       - name: Import workflow via n8n CLI
         run: |
