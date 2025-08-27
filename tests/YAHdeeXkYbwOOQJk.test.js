@@ -2,25 +2,24 @@
 const { Client } = require('pg');
 const crypto = require('crypto');
 const { N8NTester } = require('../n8n-workflow-tester');
-// require('dotenv').config({ path: __dirname + '/../.local.env' });
-
+require('dotenv').config({ path: '.local.env' });
 
 // --- config you can tweak ---
 const dbConfig = {
-  user: process.env.POSTGRES_ACCOUNT_USER || 'admin',
-  host: process.env.POSTGRES_ACCOUNT_HOST || 'db',
-  database: process.env.POSTGRES_ACCOUNT_DATABASE || 'test',
-  password: process.env.POSTGRES_ACCOUNT_PASSWORD || 'admin',
-  port: process.env.POSTGRES_ACCOUNT_PORT || 5432
+  user: process.env.POSTGRES_ACCOUNT_USER,
+  host: process.env.POSTGRES_ACCOUNT_HOST,
+  database: process.env.POSTGRES_ACCOUNT_DATABASE,
+  password: process.env.POSTGRES_ACCOUNT_PASSWORD,
+  port: process.env.POSTGRES_ACCOUNT_PORT
 };
 
 // The workflow id in n8n; keep this stable across imports
 const WORKFLOW_ID = 'YAHdeeXkYbwOOQJk';
-const WORKFLOW_PATH = process.env.WORKFLOWS_PATH ? __dirname + "/../" + process.env.WORKFLOWS_PATH + "/YAHdeeXkYbwOOQJk.json" : __dirname + '/../workflows/YAHdeeXkYbwOOQJk.json';
-const CREDS_PATH = process.env.CREDS_PATH ? __dirname + "/../" + process.env.CREDS_PATH : __dirname + '/../credentials/credentials.json';
+const WORKFLOW_PATH = process.env.WORKFLOWS_PATH + "/YAHdeeXkYbwOOQJk.json";
+const CREDS_PATH = process.env.CREDS_PATH;
 
 // If you want to run the webhook test, set an actual URL here or via env
-const WEBHOOK_URL = process.env.WEBHOOK_URL || 'http://localhost:5678/webhook/16bc0461-12ad-4933-bb1d-00e0a3fd8cd9'
+const WEBHOOK_URL = process.env.WEBHOOK_URL;
 
 // --- pg client ---
 const client = new Client(dbConfig);
