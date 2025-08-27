@@ -145,7 +145,7 @@ class N8NTester {
     let raw = await fs.readFile(this.credentialsPath, 'utf8');
     this._credsPatch.forEach(p => {
       Object.entries(p.data).forEach(([k, v]) => {
-        raw = raw.replaceAll(`$(${k})`, v); // simple string replace for any $() references
+        raw = raw.replaceAll(`$${k}`, v); // simple string replace for any $() references
       })
     })
     // Expected export format: array of creds. We patch by name.
