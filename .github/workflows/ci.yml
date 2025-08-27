@@ -72,7 +72,7 @@ jobs:
           docker run -d \
             --name n8n-test \
             -e DB_TYPE=postgresdb \
-            -e DB_POSTGRESDB_HOST=db \
+            -e DB_POSTGRESDB_HOST=postgres \
             -e DB_POSTGRESDB_DATABASE=test \
             -e DB_POSTGRESDB_USER=admin \
             -e DB_POSTGRESDB_PASSWORD=admin \
