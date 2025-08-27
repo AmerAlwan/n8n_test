@@ -130,11 +130,11 @@ jobs:
 
       - name: Import credentials via n8n CLI
         run: |
-          docker exec -u root n8n-test n8n import:credentials --input /home/node/.n8n/credentials/credentials.json --overwrite
+          docker exec -u root n8n-test n8n import:credentials --input /workspace/credentials/credentials.json --overwrite
 
       - name: Import workflow via n8n CLI
         run: |
-          docker exec -u root n8n-test n8n import:workflow --input /home/node/.n8n/workflows/YAHdeeXkYbwOOQJk.json --overwrite
+          docker exec -u root n8n-test n8n import:workflow --input /workspace/workflows/YAHdeeXkYbwOOQJk.json --overwrite
 
       - name: Run Jest tests inside n8n container
         run: |
