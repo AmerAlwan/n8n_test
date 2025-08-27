@@ -12,26 +12,26 @@ jobs:
       postgres:
         image: postgres:15
         env:
-          POSTGRES_USER: ${{ vars.POSTGRES_USER }}
-          POSTGRES_PASSWORD: ${{ vars.POSTGRES_PASSWORD }}
-          POSTGRES_DB: ${{ vars.POSTGRES_DB }}
+          POSTGRES_USER: admin
+          POSTGRES_PASSWORD: admin
+          POSTGRES_DB: test
         ports:
           - 5432:5432
         options: >-
-          --health-cmd="pg_isready -U ${{ vars.POSTGRES_USER }} -d ${{ vars.POSTGRES_DB }}"
+          --health-cmd="pg_isready -U admin -d test"
           --health-interval=5s
           --health-timeout=5s
           --health-retries=10
 
     env:
-      POSTGRES_ACCOUNT_HOST: ${{ vars.POSTGRES_ACCOUNT_HOST }}
-      POSTGRES_ACCOUNT_DATABASE: ${{ vars.POSTGRES_DB }}
-      POSTGRES_ACCOUNT_USER: ${{ vars.POSTGRES_USER }}
-      POSTGRES_ACCOUNT_PASSWORD: ${{ vars.POSTGRES_PASSWORD }}
-      POSTGRES_ACCOUNT_PORT: ${{ vars.POSTGRES_ACCOUNT_PORT }}
-      WORKFLOWS_PATH: ${{ vars.WORKFLOWS_PATH }}
-      CREDS_PATH: ${{ vars.CREDS_PATH }}
-      WEBHOOK_URL: ${{ vars.WEBHOOK_URL }}
+      POSTGRES_ACCOUNT_HOST: localhost
+      POSTGRES_ACCOUNT_DATABASE: test
+      POSTGRES_ACCOUNT_USER: admin
+      POSTGRES_ACCOUNT_PASSWORD: admin
+      POSTGRES_ACCOUNT_PORT: 5432
+      WORKFLOWS_PATH: workflows
+      CREDS_PATH: credentials/credentials.json
+      WEBHOOK_URL: http://localhost:5678/webhook/16bc0461-12ad-4933-bb1d-00e0a3fd8cd9
 
     steps:
       - name: Checkout code
@@ -40,7 +40,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ vars.NODE_VERSION }}
+          node-version: 20
 
       - name: Install dependencies
         run: npm install
@@ -48,11 +48,13 @@ jobs:
       - name: Patch credentials.json with env values
         run: |
           cp credentials/credentials.json credentials/credentials.patched.json
-          sed -i "s/\$(POSTGRES_ACCOUNT_HOST)/${{ vars.POSTGRES_ACCOUNT_HOST }}/g" credentials/credentials.patched.json
-          sed -i "s/\$(POSTGRES_ACCOUNT_DATABASE)/${{ vars.POSTGRES_DB }}/g" credentials/credentials.patched.json
-          sed -i "s/\$(POSTGRES_ACCOUNT_USER)/${{ vars.POSTGRES_USER }}/g" credentials/credentials.patched.json
-          sed -i "s/\$(POSTGRES_ACCOUNT_PASSWORD)/${{ vars.POSTGRES_PASSWORD }}/g" credentials/credentials.patched.json
-          sed -i "s/\$(POSTGRES_ACCOUNT_PORT)/${{ vars.POSTGRES_ACCOUNT_PORT }}/g" credentials/credentials.patched.json
+          while IFS= read -r line; do
+            if [[ "$line" =~ ^([A-Za-z0-9_]+)=(.*)$ ]]; then
+              key="${BASH_REMATCH[1]}"
+              val="${BASH_REMATCH[2]}"
+              sed -i "s/\\$($key)/$val/g" credentials/credentials.patched.json
+            fi
+          done < .env
 
       - name: Start n8n Docker container
         run: |
@@ -61,15 +63,15 @@ jobs:
             --name n8n-test \
             -e DB_TYPE=postgresdb \
             -e DB_POSTGRESDB_HOST=host.docker.internal \
-            -e DB_POSTGRESDB_DATABASE=${{ vars.POSTGRES_DB }} \
-            -e DB_POSTGRESDB_USER=${{ vars.POSTGRES_USER }} \
-            -e DB_POSTGRESDB_PASSWORD=${{ vars.POSTGRES_PASSWORD }} \
+            -e DB_POSTGRESDB_DATABASE=test \
+            -e DB_POSTGRESDB_USER=admin \
+            -e DB_POSTGRESDB_PASSWORD=admin \
             -e N8N_BASIC_AUTH_ACTIVE=false \
             -e N8N_HOST=localhost \
             -e N8N_PORT=5678 \
             -e N8N_PROTOCOL=http \
-            -v ${{ github.workspace }}/${{ vars.WORKFLOWS_PATH }}:/home/node/.n8n/workflows \
-            -v ${{ github.workspace }}/${{ vars.CREDS_PATH }}:/home/node/.n8n/credentials \
+            -v ${{ github.workspace }}/workflows:/home/node/.n8n/workflows \
+            -v ${{ github.workspace }}/credentials:/home/node/.n8n/credentials \
             -p 5678:5678 \
             --health-cmd="curl --fail http://localhost:5678/healthz || exit 1" \
             --health-interval=10s \
