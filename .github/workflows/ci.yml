@@ -13,7 +13,7 @@ jobs:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin
       POSTGRES_DB: test
-      POSTGRES_ACCOUNT_HOST: localhost
+      POSTGRES_ACCOUNT_HOST: db
       POSTGRES_ACCOUNT_DATABASE: test
       POSTGRES_ACCOUNT_USER: admin
       POSTGRES_ACCOUNT_PASSWORD: admin
@@ -24,23 +24,10 @@ jobs:
       OPENROUTER_ACCOUNT_APIKEY: sk
       N8N_HOST: localhost
       N8N_PORT: 5678
-      N8N_CONTAINER_NAME: n8n-test
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install root dependencies
-        run: npm install
-
-      - name: Install workflow tester dependencies
-        working-directory: n8n-workflow-tester
-        run: npm install
 
       - name: Generate .env file from workflow env variables
         run: |
@@ -53,7 +40,6 @@ jobs:
           echo "CREDS_PATH=${CREDS_PATH}" >> .env
           echo "WEBHOOK_URL=${WEBHOOK_URL}" >> .env
           echo "OPENROUTER_ACCOUNT_APIKEY=${OPENROUTER_ACCOUNT_APIKEY}" >> .env
-          echo "N8N_CONTAINER_NAME=${N8N_CONTAINER_NAME}" >> .env
 
       - name: Patch credentials.json with env values
         run: |
@@ -100,7 +86,7 @@ jobs:
             );
           "
 
-      - name: Start n8n Docker container
+      - name: Start n8n Docker container (with tester code mounted)
         run: |
           docker pull n8nio/n8n:latest
           docker run -d \
@@ -118,6 +104,9 @@ jobs:
             -e N8N_PROTOCOL=http \
             -v ${{ github.workspace }}/workflows:/home/node/.n8n/workflows \
             -v ${{ github.workspace }}/credentials:/home/node/.n8n/credentials \
+            -v ${{ github.workspace }}/n8n-workflow-tester:/n8n-workflow-tester \
+            -v ${{ github.workspace }}/tests:/tests \
+            -v ${{ github.workspace }}/.env:/n8n-workflow-tester/.env \
             -p 5678:5678 \
             --health-cmd="curl --fail http://localhost:5678/healthz || exit 1" \
             --health-interval=10s \
@@ -139,6 +128,10 @@ jobs:
           docker logs n8n-test
           exit 1
 
+      - name: Install workflow tester dependencies inside n8n container
+        run: |
+          docker exec n8n-test bash -c "cd /n8n-workflow-tester && npm install"
+
       - name: Import credentials via n8n CLI
         run: |
           docker exec n8n-test n8n import:credentials --input /home/node/.n8n/credentials/credentials.json --overwrite
@@ -147,20 +140,9 @@ jobs:
         run: |
           docker exec n8n-test n8n import:workflow --input /home/node/.n8n/workflows/YAHdeeXkYbwOOQJk.json --overwrite
 
-      - name: Run Jest tests
-        env:
-          N8N_CLI: docker exec n8n-test n8n
-          POSTGRES_ACCOUNT_HOST: localhost
-          POSTGRES_ACCOUNT_DATABASE: test
-          POSTGRES_ACCOUNT_USER: admin
-          POSTGRES_ACCOUNT_PASSWORD: admin
-          POSTGRES_ACCOUNT_PORT: 5432
-          WORKFLOWS_PATH: workflows
-          CREDS_PATH: credentials/credentials.json
-          WEBHOOK_URL: http://localhost:5678/webhook/16bc0461-12ad-4933-bb1d-00e0a3fd8cd9
-          OPENROUTER_ACCOUNT_APIKEY: sk
-        run: npm test
-
+      - name: Run Jest tests inside n8n container
+        run: |
+          docker exec n8n-test bash -c "set -a && [ -f /n8n-workflow-tester/.env ] && . /n8n-workflow-tester/.env && cd /n8n-workflow-tester && npm test"
       - name: Show n8n logs on failure
         if: failure()
         run: docker logs n8n-test
