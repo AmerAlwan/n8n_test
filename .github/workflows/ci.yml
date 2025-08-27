@@ -8,23 +8,12 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_USER: admin
-          POSTGRES_PASSWORD: admin
-          POSTGRES_DB: test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd="pg_isready -U admin -d test"
-          --health-interval=5s
-          --health-timeout=5s
-          --health-retries=10
 
     env:
-      POSTGRES_ACCOUNT_HOST: localhost
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: test
+      POSTGRES_ACCOUNT_HOST: db
       POSTGRES_ACCOUNT_DATABASE: test
       POSTGRES_ACCOUNT_USER: admin
       POSTGRES_ACCOUNT_PASSWORD: admin
@@ -32,6 +21,8 @@ jobs:
       WORKFLOWS_PATH: workflows
       CREDS_PATH: credentials/credentials.json
       WEBHOOK_URL: http://localhost:5678/webhook/16bc0461-12ad-4933-bb1d-00e0a3fd8cd9
+      N8N_HOST: localhost
+      N8N_PORT: 5678
 
     steps:
       - name: Checkout code
@@ -41,7 +32,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          
+
       - name: Install root dependencies
         run: npm install
 
@@ -49,29 +40,64 @@ jobs:
         working-directory: n8n-workflow-tester
         run: npm install
 
+      - name: Generate .env file from workflow env variables
+        run: |
+          echo "POSTGRES_ACCOUNT_HOST=${POSTGRES_ACCOUNT_HOST}" > .env
+          echo "POSTGRES_ACCOUNT_DATABASE=${POSTGRES_ACCOUNT_DATABASE}" >> .env
+          echo "POSTGRES_ACCOUNT_USER=${POSTGRES_ACCOUNT_USER}" >> .env
+          echo "POSTGRES_ACCOUNT_PASSWORD=${POSTGRES_ACCOUNT_PASSWORD}" >> .env
+          echo "POSTGRES_ACCOUNT_PORT=${POSTGRES_ACCOUNT_PORT}" >> .env
+          echo "WORKFLOWS_PATH=${WORKFLOWS_PATH}" >> .env
+          echo "CREDS_PATH=${CREDS_PATH}" >> .env
+          echo "WEBHOOK_URL=${WEBHOOK_URL}" >> .env
+
       - name: Patch credentials.json with env values
         run: |
           cp credentials/credentials.json credentials/credentials.patched.json
-          while IFS= read -r line; do
-            if [[ "$line" =~ ^([A-Za-z0-9_]+)=(.*)$ ]]; then
-              key="${BASH_REMATCH[1]}"
-              val="${BASH_REMATCH[2]}"
-              sed -i "s/\\$($key)/$val/g" credentials/credentials.patched.json
+          envsubst < credentials/credentials.patched.json > credentials/credentials.patched.json.tmp
+          mv credentials/credentials.patched.json.tmp credentials/credentials.patched.json
+
+      - name: Create Docker network
+        run: docker network create n8n-net
+
+      - name: Start postgres container
+        run: |
+          docker run -d --name db \
+            --network n8n-net \
+            -e POSTGRES_USER=${POSTGRES_USER} \
+            -e POSTGRES_PASSWORD=${POSTGRES_PASSWORD} \
+            -e POSTGRES_DB=${POSTGRES_DB} \
+            -p 5432:5432 \
+            postgres:15-alpine
+
+      - name: Wait for postgres to be healthy
+        run: |
+          for i in {1..15}; do
+            if docker exec db pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}; then
+              echo "Postgres is healthy"
+              exit 0
             fi
-          done < .env
+            echo "Waiting for postgres to be healthy..."
+            sleep 5
+          done
+          echo "Postgres did not become healthy in time"
+          docker logs db
+          exit 1
 
       - name: Start n8n Docker container
         run: |
           docker pull n8nio/n8n:latest
           docker run -d \
             --name n8n-test \
+            --network n8n-net \
             -e DB_TYPE=postgresdb \
-            -e DB_POSTGRESDB_HOST=host.docker.internal \
-            -e DB_POSTGRESDB_DATABASE=test \
-            -e DB_POSTGRESDB_USER=admin \
-            -e DB_POSTGRESDB_PASSWORD=admin \
+            -e DB_POSTGRESDB_HOST=db \
+            -e DB_POSTGRESDB_PORT=5432 \
+            -e DB_POSTGRESDB_DATABASE=${POSTGRES_DB} \
+            -e DB_POSTGRESDB_USER=${POSTGRES_USER} \
+            -e DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD} \
             -e N8N_BASIC_AUTH_ACTIVE=false \
-            -e N8N_HOST=localhost \
+            -e N8N_HOST=0.0.0.0 \
             -e N8N_PORT=5678 \
             -e N8N_PROTOCOL=http \
             -v ${{ github.workspace }}/workflows:/home/node/.n8n/workflows \
@@ -85,7 +111,7 @@ jobs:
 
       - name: Wait for n8n to be healthy
         run: |
-          for i in {1..30}; do
+          for i in {1..15}; do
             if curl -s http://localhost:5678/healthz | grep -q "ok"; then
               echo "n8n is healthy"
               exit 0
