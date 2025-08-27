@@ -1,0 +1,297 @@
+{
+  "createdAt": "2025-08-20T06:40:59.116Z",
+  "updatedAt": "2025-08-27T01:55:53.893Z",
+  "id": "YAHdeeXkYbwOOQJk",
+  "name": "Add user to database",
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "16bc0461-12ad-4933-bb1d-00e0a3fd8cd9",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        224,
+        -128
+      ],
+      "id": "39197a3f-d736-4e59-b03c-eafab2aa1d76",
+      "name": "Webhook",
+      "webhookId": "16bc0461-12ad-4933-bb1d-00e0a3fd8cd9"
+    },
+    {
+      "parameters": {
+        "errorMessage": "Invalid parameters"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        672,
+        64
+      ],
+      "id": "29fd2f8a-c198-4bc4-9081-23af9c7127ca",
+      "name": "Stop and Error"
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "users",
+          "mode": "list",
+          "cachedResultName": "users"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "username": "={{ $json.body.username }}",
+            "email": "={{ $json.body.email }}",
+            "password": "={{ $json.body.password }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "username",
+              "displayName": "username",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "password",
+              "displayName": "password",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        672,
+        -128
+      ],
+      "id": "5582f297-8c82-4e4f-9053-4684d026e2e0",
+      "name": "Insert rows in a table",
+      "credentials": {
+        "postgres": {
+          "id": "2mXYpXFNRXyys64p",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "69afcac9-8b80-4e83-b872-54f4e8da0b58",
+              "leftValue": "={{ $json.body.username }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "25f6be87-87b5-463b-861f-8c32312a1ed4",
+              "leftValue": "={{ $json.body.email }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "eb04d9c9-837d-46ce-bba4-bfc0ff285b45",
+              "leftValue": "={{ $json.body.password }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "29c4e182-e7c6-4600-bf16-09d35259562f",
+              "leftValue": "",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        -128
+      ],
+      "id": "c84b6602-1364-46dc-b843-ba85f4b89d06",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "525f25ce-623c-4e94-8cbe-cbda4d680589",
+              "name": "body.password",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        672,
+        -320
+      ],
+      "id": "0d3fcce2-f6d1-4a0b-aeaa-f57435ba9588",
+      "name": "Remove Password"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Insert rows in a table",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Remove Password",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Stop and Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "body": {
+            "username": "",
+            "email": "1c6ce569d5b84d4dbd4d1f3ea9bb9a6b@test.com",
+            "password": "1c6ce569d5b84d4dbd4d1f3ea9bb9a6b"
+          }
+        }
+      }
+    ]
+  },
+  "versionId": "4438ffa5-3421-4f7c-bd86-9b9f15f69e18",
+  "triggerCount": 1,
+  "tags": [],
+  "shared": [
+    {
+      "createdAt": "2025-08-20T06:40:59.116Z",
+      "updatedAt": "2025-08-20T06:40:59.116Z",
+      "role": "workflow:owner",
+      "workflowId": "YAHdeeXkYbwOOQJk",
+      "projectId": "AOjbbeYgLyBl6fWy",
+      "project": {
+        "createdAt": "2025-08-20T06:39:04.408Z",
+        "updatedAt": "2025-08-20T06:40:19.358Z",
+        "id": "AOjbbeYgLyBl6fWy",
+        "name": "Amer Alwan <ameralwan@hotmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null
+      }
+    }
+  ]
+}
