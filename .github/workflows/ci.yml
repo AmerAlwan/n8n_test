@@ -49,6 +49,17 @@ jobs:
         working-directory: n8n-workflow-tester
         run: npm install
 
+      - name: Generate .env file from workflow env variables
+        run: |
+         echo "POSTGRES_ACCOUNT_HOST=${POSTGRES_ACCOUNT_HOST}" > .env
+         echo "POSTGRES_ACCOUNT_DATABASE=${POSTGRES_ACCOUNT_DATABASE}" >> .env
+         echo "POSTGRES_ACCOUNT_USER=${POSTGRES_ACCOUNT_USER}" >> .env
+         echo "POSTGRES_ACCOUNT_PASSWORD=${POSTGRES_ACCOUNT_PASSWORD}" >> .env
+         echo "POSTGRES_ACCOUNT_PORT=${POSTGRES_ACCOUNT_PORT}" >> .env
+         echo "WORKFLOWS_PATH=${WORKFLOWS_PATH}" >> .env
+         echo "CREDS_PATH=${CREDS_PATH}" >> .env
+         echo "WEBHOOK_URL=${WEBHOOK_URL}" >> .env
+
       - name: Patch credentials.json with env values
         run: |
           cp credentials/credentials.json credentials/credentials.patched.json
