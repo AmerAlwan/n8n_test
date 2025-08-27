@@ -72,7 +72,7 @@ jobs:
           docker run -d \
             --name n8n-test \
             -e DB_TYPE=postgresdb \
-            -e DB_POSTGRESDB_HOST=postgres \
+            -e DB_POSTGRESDB_HOST=localhost \
             -e DB_POSTGRESDB_DATABASE=test \
             -e DB_POSTGRESDB_USER=admin \
             -e DB_POSTGRESDB_PASSWORD=admin \
@@ -91,7 +91,7 @@ jobs:
 
       - name: Wait for n8n to be healthy
         run: |
-          for i in {1..30}; do
+          for i in {1..15}; do
             if curl -s http://localhost:5678/healthz | grep -q "ok"; then
               echo "n8n is healthy"
               exit 0
