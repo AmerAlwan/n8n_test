@@ -102,11 +102,7 @@ jobs:
             -e N8N_HOST=0.0.0.0 \
             -e N8N_PORT=5678 \
             -e N8N_PROTOCOL=http \
-            -v ${{ github.workspace }}/workflows:/home/node/.n8n/workflows \
-            -v ${{ github.workspace }}/credentials:/home/node/.n8n/credentials \
-            -v ${{ github.workspace }}/n8n-workflow-tester:/n8n-workflow-tester \
-            -v ${{ github.workspace }}/tests:/tests \
-            -v ${{ github.workspace }}/.env:/n8n-workflow-tester/.env \
+            -v ${{ github.workspace }}:/workspace \
             -p 5678:5678 \
             --health-cmd="curl --fail http://localhost:5678/healthz || exit 1" \
             --health-interval=10s \
@@ -128,9 +124,9 @@ jobs:
           docker logs n8n-test
           exit 1
 
-      - name: Install workflow tester dependencies inside n8n container
+      - name: Install root dependencies inside n8n container
         run: |
-          docker exec -u root n8n-test sh -c "cd /n8n-workflow-tester && npm install"
+         docker exec n8n-test sh -c "cd /workspace && npm install"
 
       - name: Import credentials via n8n CLI
         run: |
@@ -142,7 +138,8 @@ jobs:
 
       - name: Run Jest tests inside n8n container
         run: |
-          docker exec -u root n8n-test sh -c "set -a && [ -f /n8n-workflow-tester/.env ] && . /n8n-workflow-tester/.env && cd /n8n-workflow-tester && npm test"
+         docker exec n8n-test sh -c "set -a && [ -f /workspace/.env ] && . /workspace/.env && cd /workspace && npm test"
+    
       - name: Show n8n logs on failure
         if: failure()
         run: docker logs n8n-test
