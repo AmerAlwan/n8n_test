@@ -63,13 +63,8 @@ jobs:
       - name: Patch credentials.json with env values
         run: |
           cp credentials/credentials.json credentials/credentials.patched.json
-          while IFS= read -r line; do
-            if [[ "$line" =~ ^([A-Za-z0-9_]+)=(.*)$ ]]; then
-              key="${BASH_REMATCH[1]}"
-              val="${BASH_REMATCH[2]}"
-              sed -i "s/\\$($key)/$val/g" credentials/credentials.patched.json
-            fi
-          done < .env
+          envsubst < credentials/credentials.patched.json > credentials/credentials.patched.json.tmp
+          mv credentials/credentials.patched.json.tmp credentials/credentials.patched.json
 
       - name: Start n8n Docker container
         run: |
