@@ -16,8 +16,8 @@ const dbConfig = {
 
 // The workflow id in n8n; keep this stable across imports
 const WORKFLOW_ID = 'YAHdeeXkYbwOOQJk';
-const WORKFLOW_PATH = process.env.WORKFLOWS_PATH ? __dirname + "/" + process.env.WORKFLOWS_PATH + "/YAHdeeXkYbwOOQJk.json" : __dirname + '/../workflows/YAHdeeXkYbwOOQJk.json';
-const CREDS_PATH = process.env.CREDS_PATH ? __dirname + "/" + process.env.CREDS_PATH : __dirname + '/../credentials/credentials.json';
+const WORKFLOW_PATH = process.env.WORKFLOWS_PATH ? __dirname + "../" + process.env.WORKFLOWS_PATH + "/YAHdeeXkYbwOOQJk.json" : __dirname + '/../workflows/YAHdeeXkYbwOOQJk.json';
+const CREDS_PATH = process.env.CREDS_PATH ? __dirname + "../" + process.env.CREDS_PATH : __dirname + '/../credentials/credentials.json';
 
 // If you run n8n in docker, set container name/id here or via env
 const RUNNER = { type: 'local' };
