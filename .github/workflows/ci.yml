@@ -73,6 +73,18 @@ jobs:
             -p 5432:5432 \
             postgres:15-alpine
 
+      - name: Create users table for tests
+        run: |
+         docker exec db psql -U admin -d test -c "
+          CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            username VARCHAR(255) NOT NULL,
+            email VARCHAR(255) NOT NULL,
+            password VARCHAR(255) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+        "
+
       - name: Wait for postgres to be healthy
         run: |
           for i in {1..15}; do
