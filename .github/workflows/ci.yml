@@ -126,7 +126,7 @@ jobs:
 
       - name: Install root dependencies inside n8n container
         run: |
-         docker exec n8n-test sh -c "cd /workspace && npm install"
+         docker exec -u root n8n-test sh -c "cd /workspace && npm install"
 
       - name: Import credentials via n8n CLI
         run: |
@@ -138,7 +138,7 @@ jobs:
 
       - name: Run Jest tests inside n8n container
         run: |
-         docker exec n8n-test sh -c "set -a && [ -f /workspace/.env ] && . /workspace/.env && cd /workspace && npm test"
+         docker exec -u root n8n-test sh -c "set -a && [ -f /workspace/.env ] && . /workspace/.env && cd /workspace && npm test"
     
       - name: Show n8n logs on failure
         if: failure()
