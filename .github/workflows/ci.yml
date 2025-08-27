@@ -13,7 +13,7 @@ jobs:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin
       POSTGRES_DB: test
-      POSTGRES_ACCOUNT_HOST: db
+      POSTGRES_ACCOUNT_HOST: localhost
       POSTGRES_ACCOUNT_DATABASE: test
       POSTGRES_ACCOUNT_USER: admin
       POSTGRES_ACCOUNT_PASSWORD: admin
