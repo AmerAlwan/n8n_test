@@ -57,7 +57,6 @@ class N8NTest {
       // Try to parse output even if CLI failed
       const output = `${err.stderr || ''}\n${err.stdout || ''}`;
       const parsed = extractJsonsFromText(output)[0];
-      console.log('Jsons extracted from failed execution:', parsed);
       if (parsed) {
         return new ExecutionResult(parsed);
       }
@@ -102,7 +101,6 @@ class N8NTest {
 
     const { url, data, method, headers } = this._trigger;
     const res = await axios.request({ url, method, data, headers, validateStatus: () => true });
-    console.log(res)
     return { code: res.status, data: res.data };
   }
 }
@@ -128,6 +126,13 @@ class N8NTester {
 
   test() {
     return new N8NTest(this);
+  }
+
+  async restoreWorkflow() {
+    await runN8n({
+      runner: this._runner,
+      args: ['import:workflow', '--input', this.workflowPath, '--overwrite'],
+    });
   }
 
   /**

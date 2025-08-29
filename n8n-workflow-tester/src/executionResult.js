@@ -26,6 +26,10 @@ class ExecutionResult {
     this._topError = parsedCliObject?.data?.resultData?.error || parsedCliObject?.error || null;
   }
 
+  printWorkflow() {
+    console.dir(this, { depth: null }); 
+  }
+
   get executionStatus() {
     return this._topError ? 'error' : 'success';
   }

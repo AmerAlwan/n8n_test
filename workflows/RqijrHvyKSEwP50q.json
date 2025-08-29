@@ -1,0 +1,262 @@
+{
+  "createdAt": "2025-08-29T01:25:35.448Z",
+  "updatedAt": "2025-08-29T02:34:51.909Z",
+  "id": "RqijrHvyKSEwP50q",
+  "name": "Get user email",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "path": "2a93d317-0a2b-4bc4-a95b-2825084d0055",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "04feb38a-2c1f-4316-be62-b3194ff537ac",
+      "name": "Webhook",
+      "webhookId": "2a93d317-0a2b-4bc4-a95b-2825084d0055"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "dd00c4c8-ad93-4774-a859-797e3800ceee",
+              "leftValue": "={{ $json.authenticated }}",
+              "rightValue": 200,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "4dd18205-d11e-4b5a-9b3d-c2427e63fe39",
+      "name": "If user authenticated"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "8xNhUaWFEW8XHn3t",
+          "mode": "list",
+          "cachedResultName": "Authenticate JWT Token"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "jwt": "={{ $json.jwt }}"
+          },
+          "matchingColumns": [
+            "jwt"
+          ],
+          "schema": [
+            {
+              "id": "jwt",
+              "displayName": "jwt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "ef35bd90-5482-4bef-9a75-4a0664380dd5",
+      "name": "Authenticate user"
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "users",
+          "mode": "list",
+          "cachedResultName": "users"
+        },
+        "where": {
+          "values": [
+            {
+              "column": "username",
+              "value": "={{ $json.username }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        624,
+        -96
+      ],
+      "id": "f73d2332-0953-414e-be4a-1867358114fd",
+      "name": "Select rows from a table",
+      "credentials": {
+        "postgres": {
+          "id": "2mXYpXFNRXyys64p",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"email\": \"{{ $json.email }}\"\n}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        832,
+        -96
+      ],
+      "id": "3a5925e5-dbe0-4473-841b-33879ee68c07",
+      "name": "Return email"
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        624,
+        96
+      ],
+      "id": "bad2445d-9f4f-4fe8-ae27-ea0aacea4149",
+      "name": "Return unauthorized"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Authenticate user",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If user authenticated": {
+      "main": [
+        [
+          {
+            "node": "Select rows from a table",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return unauthorized",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Authenticate user": {
+      "main": [
+        [
+          {
+            "node": "If user authenticated",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select rows from a table": {
+      "main": [
+        [
+          {
+            "node": "Return email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "jwt": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InVzZXIxIiwiZXhwIjoxNzU2NTE2ODYzfQ.9xQrTkXN61aUUUMw6KICauo4aI6twDJECEqJXm0IzmM="
+        }
+      }
+    ]
+  },
+  "versionId": "7f05176e-29a0-46b0-9115-c4b899b5b3cd",
+  "triggerCount": 0,
+  "tags": [],
+  "shared": [
+    {
+      "createdAt": "2025-08-29T01:25:35.448Z",
+      "updatedAt": "2025-08-29T01:25:35.448Z",
+      "role": "workflow:owner",
+      "workflowId": "RqijrHvyKSEwP50q",
+      "projectId": "AOjbbeYgLyBl6fWy",
+      "project": {
+        "createdAt": "2025-08-20T06:39:04.408Z",
+        "updatedAt": "2025-08-20T06:40:19.358Z",
+        "id": "AOjbbeYgLyBl6fWy",
+        "name": "Amer Alwan <ameralwan@hotmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null
+      }
+    }
+  ]
+}

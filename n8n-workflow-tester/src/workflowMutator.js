@@ -47,39 +47,28 @@ function makeManualTriggerNode({ name = 'Manual Trigger (tester)' }) {
  * - Reuse the mocked node's outgoing connections on the mock node
  */
 function mockNode(workflow, nodeName, data) {
-  const wf = deepClone(workflow);
+const wf = deepClone(workflow);
   const target = findNodeByName(wf, nodeName);
   if (!target) throw new Error(`mockNode: node "${nodeName}" not found`);
-  const mockName = nodeName;
-  const mock = makeSetNode({ name: mockName, json: data });
-  wf.nodes.push(mock);
 
-  const conns = ensureConnections(wf);
-
-  // 1) Rewire incoming edges to point to mock
-  for (const [fromName, fromSpec] of Object.entries(conns)) {
-    const mains = fromSpec?.main || [];
-    mains.forEach((outArr) => {
-      outArr.forEach((link) => {
-        if (link.node === nodeName) link.node = mockName;
-      });
-    });
-  }
-
-  // 2) Mock node should have the same outgoing edges as original
-  if (conns[nodeName]) {
-    conns[mockName] = deepClone(conns[nodeName]);
-  }
-
-  // 3) Optionally neuter original node's outgoing connections
-  conns[nodeName] = { main: [ [] ] };
+  // Overwrite the node in-place
+  target.type = 'n8n-nodes-base.set';
+  target.typeVersion = 3.4;
+  target.parameters = {
+    mode: 'raw',
+    jsonOutput: JSON.stringify(data, null, 2),
+    options: {},
+  };
 
   return wf;
 }
 
 /**
- * Inject a Manual Trigger + Set(&raw JSON) chain that feeds the same target as the real trigger.
- * This does NOT remove the original trigger; it just adds a separate path for CLI execution.
+ * Inject a Manual Trigger + Set(&raw JSON) chain that feeds the same targets as the real trigger.
+ * Additionally:
+ *  - The original trigger node is renamed to "<original>-original" (uniqued if needed).
+ *  - The new Edit node takes the original trigger's *exact* name.
+ * The original trigger path remains; this only adds a parallel manual path.
  */
 function addManualInjection(workflow, originalTriggerName, injectedJson) {
   const wf = deepClone(workflow);
@@ -87,22 +76,82 @@ function addManualInjection(workflow, originalTriggerName, injectedJson) {
   if (!trigger) throw new Error(`setTrigger: trigger node "${originalTriggerName}" not found`);
 
   const conns = ensureConnections(wf);
-  const triggerConn = conns[originalTriggerName]?.main?.[0]?.[0];
-  if (!triggerConn) throw new Error(`Trigger node "${originalTriggerName}" appears unconnected on output 0`);
 
-  const targetNodeName = triggerConn.node;
+  // Helper: make a unique node name within the workflow
+  const uniqueName = (base) => {
+    const existing = new Set((wf.nodes || []).map(n => n.name));
+    if (!existing.has(base)) return base;
+    let i = 1;
+    let candidate = `${base}-${i}`;
+    while (existing.has(candidate)) {
+      i += 1;
+      candidate = `${base}-${i}`;
+    }
+    return candidate;
+  };
 
-  const manual = makeManualTriggerNode({});
-  const edit = makeSetNode({ name: 'Edit Fields (tester)', json: injectedJson });
-  // place reasonably
+  // Collect ALL outgoing links from the original trigger across all outputs (before renaming).
+  const outgoing = (conns[originalTriggerName]?.main || []);
+  const allLinks = [];
+  for (let outIdx = 0; outIdx < outgoing.length; outIdx++) {
+    const linksForOutput = outgoing[outIdx] || [];
+    for (const link of linksForOutput) {
+      if (link && link.node) {
+        allLinks.push({ node: link.node, type: link.type || 'main', index: link.index ?? 0 });
+      }
+    }
+  }
+  if (allLinks.length === 0) {
+    throw new Error(`Trigger node "${originalTriggerName}" appears to have no outgoing connections`);
+  }
+
+  // De-duplicate links (in case the same target appears multiple times)
+  const key = l => `${l.node}|${l.type}|${l.index}`;
+  const deduped = Array.from(new Map(allLinks.map(l => [key(l), l])).values());
+
+  // --- Rename the original trigger node and migrate connections ---
+  const renamedTriggerName = uniqueName(`${originalTriggerName}-original`);
+
+  // 1) rename node object
+  trigger.name = renamedTriggerName;
+
+  // 2) move its *outgoing* connection entry from the old key to the new key
+  if (conns[originalTriggerName]) {
+    conns[renamedTriggerName] = conns[originalTriggerName];
+    delete conns[originalTriggerName];
+  }
+
+  // 3) update any *incoming* links that pointed at the old name (paranoia: triggers usually have none)
+  for (const srcName of Object.keys(conns)) {
+    const outs = conns[srcName]?.main || [];
+    for (let outIdx = 0; outIdx < outs.length; outIdx++) {
+      const links = outs[outIdx] || [];
+      for (const link of links) {
+        if (link && link.node === originalTriggerName) {
+          link.node = renamedTriggerName;
+        }
+      }
+    }
+  }
+
+  // --- Create Manual Trigger + Edit (which inherits the *original* trigger name) ---
+  const manualName = uniqueName('Manual Trigger (tester)');
+  const manual = makeManualTriggerNode({ name: manualName });
+  const edit = makeSetNode({ name: originalTriggerName, json: injectedJson }); // <-- same name as the original trigger had
+
+  // Place reasonably
   manual.position = [0, -192];
   edit.position = [224, -192];
 
   wf.nodes.push(manual);
   wf.nodes.push(edit);
 
+  // Wire Manual -> Edit
   conns[manual.name] = { main: [[{ node: edit.name, type: 'main', index: 0 }]] };
-  conns[edit.name] = { main: [[{ node: targetNodeName, type: 'main', index: 0 }]] };
+
+  // Wire Edit -> ALL original targets (fan-out), under the *original* trigger name
+  // (The renamed real trigger continues to have its original connections under "<original>-original")
+  conns[edit.name] = { main: [deduped] };
 
   return wf;
 }

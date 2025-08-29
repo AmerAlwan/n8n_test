@@ -2,7 +2,7 @@
 const { Client } = require('pg');
 const crypto = require('crypto');
 const { N8NTester } = require('../n8n-workflow-tester');
-require('dotenv').config({ path: '.local.env' });
+// require('dotenv').config({ path: '.local.env' });
 
 // --- config you can tweak ---
 const dbConfig = {
@@ -56,6 +56,10 @@ describe('Test My Workflow', () => {
     await resetDatabase();
   });
 
+  afterEach(async () => {
+      await n8nTester.restoreWorkflow();
+  });
+
   afterAll(async () => {
     await client.end();
   });
@@ -81,9 +85,18 @@ describe('Test My Workflow', () => {
 
     // Node traces
     expect(output.node('If').data).toStrictEqual(webhookData);
-    expect(output.node('Remove Password').data).toStrictEqual({
-      body: { ...webhookData.body, password: '' },
-    });
+
+    expect(output.node('Hash Password').data).toHaveProperty("hashed_password");
+  
+    const hashed_password = output.node('Hash Password').data.hashed_password;
+    expect(hashed_password).not.toBe(webhookData.body.password);
+    expect(hashed_password.length).toBeGreaterThan(10);
+
+    // Remove Password node still contains user/email under body.*
+    expect(output.node('Remove Password').data.username).toBe(webhookData.body.username);
+    expect(output.node('Remove Password').data.email).toBe(webhookData.body.email);
+    expect(output.node('Remove Password').data).not.toHaveProperty('hashed_password');
+    expect(output.node('Remove Password').data).toHaveProperty('password');
 
     expect(output.node('Insert rows in a table').executionStatus).toBe('success');
 
@@ -91,11 +104,7 @@ describe('Test My Workflow', () => {
       expect(output.node('Insert rows in a table').data).toHaveProperty(p),
     );
 
-    // Remove Password node still contains user/email under body.*
-    expect(output.node('Remove Password').data.body.username).toBe(webhookData.body.username);
-    expect(output.node('Remove Password').data.body.email).toBe(webhookData.body.email);
-
-    // Verify DB
+    // Verify user is in the database
     const insertedId = output.node('Insert rows in a table').data.id;
     const { rows } = await client.query(
       'SELECT username, email FROM users WHERE id = $1',
@@ -128,7 +137,6 @@ describe('Test My Workflow', () => {
     expect(response.code).toBe(204); // adjust if your webhook returns something else
     expect(response.data).toStrictEqual(webhookData);
   });*/
-  
 
  test('Correct insertion into mocked database', async () => {
     const n8nTest = n8nTester.test();
@@ -158,18 +166,46 @@ describe('Test My Workflow', () => {
     expect(output.executionStatus).toBe('success');
     expect(output.node('If').data).toStrictEqual(webhookData);
 
-    expect(output.node('Remove Password').data).toStrictEqual({
-      body: { ...webhookData.body, password: '' },
-    });
+    expect(output.node('Insert rows in a table').executionStatus).toBe('success');
+
+    ['id', 'username', 'email', 'password', 'created_at'].forEach((p) =>
+      expect(output.node('Insert rows in a table').data).toHaveProperty(p),
+    );
+  });
+
+   test('Correct insertion into mocked remove password', async () => {
+    const n8nTest = n8nTester.test();
+
+    const user = crypto.randomUUID().replaceAll('-', '');
+    const webhookData = {
+      body: {
+        username: user,
+        email: `${user}@test.com`,
+        password: user,
+      },
+    };
+
+    // Replace the DB node with a Set node that emits a fake DB record
+    n8nTest.mockNode('Remove Password',
+      {
+      "username": webhookData.body.username,
+      "email": webhookData.body.email,
+      "password": webhookData.body.password,
+      }
+    )
+
+    n8nTest.setTrigger('Webhook', webhookData);
+
+    const output = await n8nTest.trigger();
+
+    expect(output.executionStatus).toBe('success');
+    expect(output.node('If').data).toStrictEqual(webhookData);
 
     expect(output.node('Insert rows in a table').executionStatus).toBe('success');
 
     ['id', 'username', 'email', 'password', 'created_at'].forEach((p) =>
       expect(output.node('Insert rows in a table').data).toHaveProperty(p),
     );
-
-    expect(output.node('Remove Password').data.body.username).toBe(webhookData.body.username);
-    expect(output.node('Remove Password').data.body.email).toBe(webhookData.body.email);
   });
 
   test('Wrong insertion into database - no username', async () => {
@@ -189,7 +225,7 @@ describe('Test My Workflow', () => {
     const output = await n8nTest.trigger();
 
     expect(output.executionStatus).toBe('error');
-	expect(output.errorMessage).toBe('Invalid parameters');
+	  expect(output.errorMessage).toBe('Invalid parameters');
 	
     expect(output.node('If').getData(1)).toStrictEqual(webhookData);
 

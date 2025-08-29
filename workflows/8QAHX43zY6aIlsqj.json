@@ -1,0 +1,488 @@
+{
+  "createdAt": "2025-08-28T23:33:19.521Z",
+  "updatedAt": "2025-08-29T06:09:56.884Z",
+  "id": "8QAHX43zY6aIlsqj",
+  "name": "Login user",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "type": "SHA256",
+        "value": "={{ $json.body.password }}",
+        "dataPropertyName": "hashed_password"
+      },
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 1,
+      "position": [
+        448,
+        -336
+      ],
+      "id": "c3103c18-3720-47c2-87f8-c2218f724546",
+      "name": "Crypto"
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "users",
+          "mode": "list",
+          "cachedResultName": "users"
+        },
+        "where": {
+          "values": [
+            {
+              "column": "username",
+              "value": "={{ $json.body.username }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        224,
+        -64
+      ],
+      "id": "72c45d5e-7382-4161-bf2d-158ff6310548",
+      "name": "Get user from db",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "2mXYpXFNRXyys64p",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combineBySql",
+        "query": "SELECT \n  input1.hashed_password AS login_hashed_password,\n  input2.password AS actual_hashed_password\nFROM input1\nCROSS JOIN input2;\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        672,
+        -256
+      ],
+      "id": "dc46286f-766f-4734-af46-54ef5b8cd7d3",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "username or password is wrong",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1120,
+        -64
+      ],
+      "id": "120847b5-0015-4e8a-827d-a67433c591a0",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "4fd4e215-4180-47f3-a854-edcfe6517547",
+              "leftValue": "={{ $json.login_hashed_password }}",
+              "rightValue": "={{ $json.actual_hashed_password }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        896,
+        -256
+      ],
+      "id": "262045ee-71c7-45c8-b42a-591f9c3ccfdb",
+      "name": "If hashed passwords equal"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d142b6ff-b094-4ac5-bb09-62de7c7bb7f9",
+              "leftValue": "={{ $('Get user from db').item.json.isEmpty() }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        -64
+      ],
+      "id": "b3a8a5b5-9498-4f29-9dfa-88ce5bb7bf47",
+      "name": "If user exists"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      header: Buffer.from(JSON.stringify({\n        alg: \"HS256\",\n        typ: \"JWT\"\n      })).toString(\"base64url\")\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        -256
+      ],
+      "id": "6bf734ad-025c-4d78-9ac9-21bd7e63e79c",
+      "name": "Create header"
+    },
+    {
+      "parameters": {
+        "jsCode": "const user = $('Get user from db').last().json;\nconst expiry = Math.floor(Date.now() / 1000) + (60 * 60 * 24);\nreturn [\n  {\n    json: {\n      payload: Buffer.from(JSON.stringify({\n        username: user.username,\n        exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24)\n      })).toString(\"base64url\"),\n      expiry: expiry\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        -448
+      ],
+      "id": "ad4f1ea3-72fa-4d3b-becd-6127ffe2ee2c",
+      "name": "Create payload"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "11ff2ded-31ac-4862-a3f9-44af95d726de",
+              "name": "jwt",
+              "value": "={{ $json.jwt_data }}.{{ $json.signed_jwt_data }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2016,
+        -384
+      ],
+      "id": "0f952e56-2afa-4bd1-b6ca-c82de515fdd9",
+      "name": "Assemble JWT token"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1344,
+        -384
+      ],
+      "id": "86c7d048-8fca-4924-a54b-7f3cfa7a7543",
+      "name": "Wait for header and payload"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8fb38699-fc06-4bed-a204-50f2bed47a3c",
+              "name": "jwt_data",
+              "value": "={{ $json.header }}.{{ $json.payload }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1568,
+        -384
+      ],
+      "id": "2f26710b-0e32-4e1c-ac29-ef144e7775c4",
+      "name": "Assemble JWT data"
+    },
+    {
+      "parameters": {
+        "action": "hmac",
+        "type": "SHA256",
+        "value": "={{ $json.jwt_data }}",
+        "dataPropertyName": "signed_jwt_data",
+        "secret": "secret",
+        "encoding": "base64"
+      },
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 1,
+      "position": [
+        1792,
+        -384
+      ],
+      "id": "7060d044-7800-4cb7-be26-e903d5286e9d",
+      "name": "Sign JWT data"
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        2240,
+        -384
+      ],
+      "id": "be4a310c-4aae-49e9-aa74-ea956991220c",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "path": "0691ab98-d0a1-431a-a8a2-082fc85ff260",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        -176
+      ],
+      "id": "768bcf60-a37f-424d-b714-a3fd05ab1656",
+      "name": "Webhook",
+      "webhookId": "0691ab98-d0a1-431a-a8a2-082fc85ff260"
+    }
+  ],
+  "connections": {
+    "Get user from db": {
+      "main": [
+        [
+          {
+            "node": "If user exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crypto": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "If hashed passwords equal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If hashed passwords equal": {
+      "main": [
+        [
+          {
+            "node": "Create header",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Create payload",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If user exists": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ],
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create header": {
+      "main": [
+        [
+          {
+            "node": "Wait for header and payload",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Create payload": {
+      "main": [
+        [
+          {
+            "node": "Wait for header and payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for header and payload": {
+      "main": [
+        [
+          {
+            "node": "Assemble JWT data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assemble JWT data": {
+      "main": [
+        [
+          {
+            "node": "Sign JWT data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sign JWT data": {
+      "main": [
+        [
+          {
+            "node": "Assemble JWT token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assemble JWT token": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Get user from db",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Crypto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "e1512669-7132-47b6-a00f-6ee9463a054a",
+  "triggerCount": 0,
+  "tags": [],
+  "shared": [
+    {
+      "createdAt": "2025-08-28T23:33:19.521Z",
+      "updatedAt": "2025-08-28T23:33:19.521Z",
+      "role": "workflow:owner",
+      "workflowId": "8QAHX43zY6aIlsqj",
+      "projectId": "AOjbbeYgLyBl6fWy",
+      "project": {
+        "createdAt": "2025-08-20T06:39:04.408Z",
+        "updatedAt": "2025-08-20T06:40:19.358Z",
+        "id": "AOjbbeYgLyBl6fWy",
+        "name": "Amer Alwan <ameralwan@hotmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null
+      }
+    }
+  ]
+}

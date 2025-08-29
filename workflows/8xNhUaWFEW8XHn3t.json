@@ -1,0 +1,330 @@
+{
+  "createdAt": "2025-08-29T00:58:46.953Z",
+  "updatedAt": "2025-08-29T05:13:20.773Z",
+  "id": "8xNhUaWFEW8XHn3t",
+  "name": "Authenticate JWT Token",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ae7b4016-a34e-4a94-ba9a-f4239823b2ee",
+              "name": "header",
+              "value": "={{ $json.jwt.split(\".\")[0] }}",
+              "type": "string"
+            },
+            {
+              "id": "252a30c9-a027-49c7-8f91-41b2b133ebfa",
+              "name": "payload",
+              "value": "={{ $json.jwt.split(\".\")[1] }}",
+              "type": "string"
+            },
+            {
+              "id": "80f3051d-cb68-4882-b81a-512d426f9969",
+              "name": "=signed_actual",
+              "value": "={{ $json.jwt.split(\".\")[2] }}",
+              "type": "string"
+            },
+            {
+              "id": "cf485135-d10e-4639-93f8-61a488d4929a",
+              "name": "jwt_data",
+              "value": "={{ $json.jwt.split(\".\")[0] }}.{{ $json.jwt.split(\".\")[1] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        -72
+      ],
+      "id": "1357af6d-5f61-458a-b1c6-4eee67b89574",
+      "name": "Extract JWT Parts"
+    },
+    {
+      "parameters": {
+        "action": "hmac",
+        "type": "SHA256",
+        "value": "={{ $json.jwt_data }}",
+        "dataPropertyName": "signed_jwt_data",
+        "secret": "secret",
+        "encoding": "base64"
+      },
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 1,
+      "position": [
+        448,
+        -72
+      ],
+      "id": "68ccbf6d-c33e-406d-bb2e-70bcff83eab2",
+      "name": "Sign JWT Data"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e7b0959b-bf48-4b3a-9bf5-1c133cb5cf8f",
+              "leftValue": "={{ $json.signed_jwt_data }}",
+              "rightValue": "={{ $json.signed_actual }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        672,
+        -72
+      ],
+      "id": "fcd627e7-fb58-4f7b-b676-d01633bfcf9c",
+      "name": "If signed data equal"
+    },
+    {
+      "parameters": {
+        "jsCode": "const header = JSON.parse(Buffer.from($json.header, \"base64url\").toString(\"utf8\"))\n\nconst payload = JSON.parse(Buffer.from($json.payload, \"base64url\").toString(\"utf8\"))\n\nlet expired = false\n\nif (payload.exp && Date.now() >= payload.exp * 1000) {\n  expired = true\n}\n\nreturn [\n  {\n    json: {\n      header: header,\n      payload: payload,\n      expired: expired\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        -144
+      ],
+      "id": "8a461ccc-bcfa-4aa5-a8cb-7b772f6f0686",
+      "name": "Extract JWT data"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "792feeaa-5b3f-4c38-bb93-5c87516769b6",
+              "leftValue": "={{ $json.expired }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        -144
+      ],
+      "id": "887654c4-c895-43dd-902b-98643d77f980",
+      "name": "If JWT token not expired"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3f61c9f3-02b4-4ef9-9a2d-69ac89ce5700",
+              "name": "authenticated",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "f5c34df3-698d-404f-922e-c8924d9525d8",
+              "name": "username",
+              "value": "={{ $json.payload.username }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1344,
+        -192
+      ],
+      "id": "18901171-e223-4757-9c14-c2cb0a7f360d",
+      "name": "Return username"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0131fe42-3303-4fb0-82aa-8cc5e4c805db",
+              "name": "authenticated",
+              "value": false,
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1344,
+        24
+      ],
+      "id": "494321fe-d24d-40bb-a60b-743f751ebded",
+      "name": "Return unauthenticated"
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "jwt"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        -72
+      ],
+      "id": "a0271fb6-6a67-4546-9556-ebaec3658023",
+      "name": "When Executed by Another Workflow"
+    }
+  ],
+  "connections": {
+    "Extract JWT Parts": {
+      "main": [
+        [
+          {
+            "node": "Sign JWT Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sign JWT Data": {
+      "main": [
+        [
+          {
+            "node": "If signed data equal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If signed data equal": {
+      "main": [
+        [
+          {
+            "node": "Extract JWT data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return unauthenticated",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract JWT data": {
+      "main": [
+        [
+          {
+            "node": "If JWT token not expired",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If JWT token not expired": {
+      "main": [
+        [
+          {
+            "node": "Return username",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return unauthenticated",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Extract JWT Parts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {},
+  "versionId": "96bd3496-027b-4c16-8d67-85210b57abc7",
+  "triggerCount": 0,
+  "tags": [],
+  "shared": [
+    {
+      "createdAt": "2025-08-29T00:58:46.953Z",
+      "updatedAt": "2025-08-29T00:58:46.953Z",
+      "role": "workflow:owner",
+      "workflowId": "8xNhUaWFEW8XHn3t",
+      "projectId": "AOjbbeYgLyBl6fWy",
+      "project": {
+        "createdAt": "2025-08-20T06:39:04.408Z",
+        "updatedAt": "2025-08-20T06:40:19.358Z",
+        "id": "AOjbbeYgLyBl6fWy",
+        "name": "Amer Alwan <ameralwan@hotmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null
+      }
+    }
+  ]
+}

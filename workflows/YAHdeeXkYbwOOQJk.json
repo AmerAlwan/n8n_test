@@ -1,28 +1,11 @@
 {
   "createdAt": "2025-08-20T06:40:59.116Z",
-  "updatedAt": "2025-08-27T01:55:53.893Z",
+  "updatedAt": "2025-08-29T05:52:36.327Z",
   "id": "YAHdeeXkYbwOOQJk",
   "name": "Add user to database",
-  "active": true,
+  "active": false,
   "isArchived": false,
   "nodes": [
-    {
-      "parameters": {
-        "httpMethod": "POST",
-        "path": "16bc0461-12ad-4933-bb1d-00e0a3fd8cd9",
-        "responseMode": "lastNode",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2.1,
-      "position": [
-        224,
-        -128
-      ],
-      "id": "39197a3f-d736-4e59-b03c-eafab2aa1d76",
-      "name": "Webhook",
-      "webhookId": "16bc0461-12ad-4933-bb1d-00e0a3fd8cd9"
-    },
     {
       "parameters": {
         "errorMessage": "Invalid parameters"
@@ -31,7 +14,7 @@
       "typeVersion": 1,
       "position": [
         672,
-        64
+        -48
       ],
       "id": "29fd2f8a-c198-4bc4-9081-23af9c7127ca",
       "name": "Stop and Error"
@@ -52,9 +35,9 @@
         "columns": {
           "mappingMode": "defineBelow",
           "value": {
-            "username": "={{ $json.body.username }}",
-            "email": "={{ $json.body.email }}",
-            "password": "={{ $json.body.password }}"
+            "username": "={{ $json.username }}",
+            "email": "={{ $json.email }}",
+            "password": "={{ $json.password }}"
           },
           "matchingColumns": [
             "id"
@@ -116,8 +99,8 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        672,
-        -128
+        1120,
+        -240
       ],
       "id": "5582f297-8c82-4e4f-9053-4684d026e2e0",
       "name": "Insert rows in a table",
@@ -187,7 +170,7 @@
       "typeVersion": 2.2,
       "position": [
         448,
-        -128
+        -144
       ],
       "id": "c84b6602-1364-46dc-b843-ba85f4b89d06",
       "name": "If"
@@ -197,48 +180,75 @@
         "assignments": {
           "assignments": [
             {
-              "id": "525f25ce-623c-4e94-8cbe-cbda4d680589",
-              "name": "body.password",
-              "value": "",
+              "id": "6bebdebb-7053-4eef-86b0-9257377b54a1",
+              "name": "username",
+              "value": "={{ $json.body.username }}",
+              "type": "string"
+            },
+            {
+              "id": "9355a50e-56d6-4693-ad54-682ff0eb71b0",
+              "name": "email",
+              "value": "={{ $json.body.email }}",
+              "type": "string"
+            },
+            {
+              "id": "3efd6062-c25a-4d55-815d-f5f4f52b35b2",
+              "name": "password",
+              "value": "={{ $json.hashed_password }}",
               "type": "string"
             }
           ]
         },
-        "includeOtherFields": true,
         "options": {}
       },
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        672,
-        -320
+        896,
+        -240
       ],
-      "id": "0d3fcce2-f6d1-4a0b-aeaa-f57435ba9588",
+      "id": "c41eee27-46f3-4611-8928-acef302077e4",
       "name": "Remove Password"
+    },
+    {
+      "parameters": {
+        "type": "SHA256",
+        "value": "={{ $json.body.password }}",
+        "dataPropertyName": "hashed_password"
+      },
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 1,
+      "position": [
+        672,
+        -240
+      ],
+      "id": "874fdf21-06f9-4b4b-802d-dca963cb3e35",
+      "name": "Hash Password"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "16bc0461-12ad-4933-bb1d-00e0a3fd8cd9",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        192,
+        -160
+      ],
+      "id": "39197a3f-d736-4e59-b03c-eafab2aa1d76",
+      "name": "Webhook",
+      "webhookId": "16bc0461-12ad-4933-bb1d-00e0a3fd8cd9"
     }
   ],
   "connections": {
-    "Webhook": {
-      "main": [
-        [
-          {
-            "node": "If",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "If": {
       "main": [
         [
           {
-            "node": "Insert rows in a table",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Remove Password",
+            "node": "Hash Password",
             "type": "main",
             "index": 0
           }
@@ -246,6 +256,39 @@
         [
           {
             "node": "Stop and Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove Password": {
+      "main": [
+        [
+          {
+            "node": "Insert rows in a table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hash Password": {
+      "main": [
+        [
+          {
+            "node": "Remove Password",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "If",
             "type": "main",
             "index": 0
           }
@@ -260,20 +303,8 @@
   "meta": {
     "templateCredsSetupCompleted": true
   },
-  "pinData": {
-    "Webhook": [
-      {
-        "json": {
-          "body": {
-            "username": "",
-            "email": "1c6ce569d5b84d4dbd4d1f3ea9bb9a6b@test.com",
-            "password": "1c6ce569d5b84d4dbd4d1f3ea9bb9a6b"
-          }
-        }
-      }
-    ]
-  },
-  "versionId": "4438ffa5-3421-4f7c-bd86-9b9f15f69e18",
+  "pinData": {},
+  "versionId": "41c2c57d-0078-4080-8cc1-ad28d3f480b7",
   "triggerCount": 1,
   "tags": [],
   "shared": [
