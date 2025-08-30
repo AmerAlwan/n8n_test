@@ -1,0 +1,45 @@
+name: Test OIDC Vault Login
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write    # ✅ required for OIDC
+  contents: read
+
+jobs:
+  oidc-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get GitHub OIDC token
+        id: oidc
+        run: |
+          OIDC_TOKEN=$(curl -sLS \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=vault" \
+            | jq -r '.value')
+
+          echo "OIDC_TOKEN=${OIDC_TOKEN}" >> $GITHUB_ENV
+          echo "Got OIDC token, length: ${#OIDC_TOKEN}"
+
+      - name: Exchange OIDC token for Vault token
+        run: |
+          VAULT_TOKEN=$(curl -sLS \
+            --request POST \
+            --data "{\"jwt\": \"${OIDC_TOKEN}\", \"role\": \"github-n8n-deployer\"}" \
+            https://vault.aalwan.net/v1/auth/jwt/login \
+            | jq -r '.auth.client_token')
+
+          if [ "$VAULT_TOKEN" = "null" ]; then
+            echo "❌ Vault login failed"
+            exit 1
+          fi
+
+          echo "✅ Got Vault token, length: ${#VAULT_TOKEN}"
+          # Save for next step
+          echo "VAULT_TOKEN=$VAULT_TOKEN" >> $GITHUB_ENV
+
+      - name: Try reading a secret
+        run: |
+          curl -sLS -H "X-Vault-Token: $VAULT_TOKEN" \
+            https://vault.aalwan.net/v1/n8n-test/data/app | jq .
