@@ -30,6 +30,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install envsubst (gettext) + jq + curl
+        run: |
+          set -e
+          if command -v apt-get >/dev/null 2>&1; then
+            sudo apt-get update -y
+            sudo apt-get install -y gettext-base jq curl
+          elif command -v apk >/dev/null 2>&1; then
+            sudo apk add --no-cache gettext jq curl
+          elif command -v yum >/dev/null 2>&1; then
+            sudo yum install -y gettext jq curl
+          else
+            echo "Package manager not detected. Install gettext (envsubst), jq, curl manually."; exit 1
+          fi
+
       - name: OIDC → Vault (get short-lived token)
         run: |
           set -euo pipefail
