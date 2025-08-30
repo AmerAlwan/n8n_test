@@ -33,7 +33,7 @@ jobs:
 
       - name: Run CD steps inside n8n container
         run: |
-          docker exec \
+          docker exec -u root \
             -e ACTIONS_ID_TOKEN_REQUEST_URL="$ACTIONS_ID_TOKEN_REQUEST_URL" \
             -e ACTIONS_ID_TOKEN_REQUEST_TOKEN="$ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
             -e VAULT_ADDR="$VAULT_ADDR" \
