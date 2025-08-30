@@ -42,4 +42,4 @@ jobs:
       - name: Try reading a secret
         run: |
           curl -sLS -H "X-Vault-Token: $VAULT_TOKEN" \
-            https://vault.aalwan.net/v1/n8n-test/data/app | jq .
+            https://vault.aalwan.net/v1/n8n-test/data/test-secret | jq .
