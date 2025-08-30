@@ -24,7 +24,7 @@ jobs:
       OPENROUTER_ACCOUNT_APIKEY: sk
       N8N_HOST: localhost
       N8N_PORT: 5678
-      ENV: STAGING
+      ENV: DEV
       BASE_URL: http://localhost:5678
 
     steps:
