@@ -18,7 +18,8 @@ jobs:
     runs-on: [self-hosted, nas-staging]
 
     env:
-      CONTAINER_NAME: n8n                      # 👈 adjust if different
+      CONTAINER_NAME: n8n_test
+      WORKING_DIR: /home/node/.n8n/deployment/actions-runner/_work/n8n_test/n8n_test
       STAGING_DIR: /home/node/.n8n/deployment/cd-staging
       DEPLOY_SCRIPT: /home/node/.n8n/deployment/deploy.sh
       HEALTH_URL: https://n8n_test.aalwan.net/healthz
@@ -85,14 +86,9 @@ jobs:
               done
 
               echo "[*] Staging files"
-              rm -rf "$STAGING_DIR"
-              mkdir -p "$STAGING_DIR/workflows"
+              cp -r "$WORKING_DIR" "$STAGING_DIR"
 
-              envsubst < credentials/credentials.json > "$STAGING_DIR/credentials.patched.json"
-              find workflows -maxdepth 1 -type f -name "*.json" -exec cp {} "$STAGING_DIR/workflows/" \; || true
-
-              ls -l "$STAGING_DIR" || true
-              ls -l "$STAGING_DIR/workflows" || true
+              envsubst < "$WORKING_DIR/credentials/credentials.json" > "$STAGING_DIR/credentials/credentials.json"
 
               echo "[*] Running deploy script"
               sh "$DEPLOY_SCRIPT"
