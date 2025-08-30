@@ -87,11 +87,13 @@ jobs:
               done
 
               echo "[*] Staging files"
-              cp -r "$WORKING_DIR" "$STAGING_DIR"
+              cp -r "$WORKING_DIR/." "$STAGING_DIR/"
 
-              echo "DIRS:"
+              echo ".N8N:"
               echo "$(ls /home/node/.n8n)"
+              echo "DEPLOYMENT DIR"
               echo "$(ls /home/node/.n8n/deployment)"
+              echo "STAGING DIR"
               echo "$(ls "$STAGING_DIR")"
 
               envsubst < "$WORKING_DIR/credentials/credentials.json" > "$STAGING_DIR/credentials/credentials.json"
