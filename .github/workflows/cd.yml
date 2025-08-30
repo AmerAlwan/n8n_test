@@ -1,0 +1,107 @@
+name: n8n CD (self-hosted runner inside container, Vault OIDC, KV v2)
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "workflows/**"
+      - "credentials/**"
+      - ".github/workflows/cd.yml"
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, nas-prod]
+
+    env:
+      # Vault & deployment settings
+      VAULT_ADDR: https://vault.aalwan.net
+      VAULT_ROLE: github-n8n-deployer
+      VAULT_KV_MOUNT: n8n-test      # KV v2 mount
+      VAULT_APP_PATH: env           # secret path under the mount
+      STAGING_DIR: /home/node/.n8n/deployment/cd-staging
+      DEPLOY_SCRIPT: /home/node/.n8n/deployment/deploy.sh
+      HEALTH_URL: https://n8n_test.aalwan.net/healthz
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: OIDC → Vault (get short-lived token)
+        run: |
+          set -euo pipefail
+
+          OIDC_TOKEN=$(curl -sLS \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=vault" | jq -r '.value')
+
+          VAULT_TOKEN=$(curl -sLS \
+            --request POST \
+            --data "{\"jwt\": \"$OIDC_TOKEN\", \"role\": \"$VAULT_ROLE\"}" \
+            "$VAULT_ADDR/v1/auth/jwt/login" | jq -r '.auth.client_token')
+
+          if [ -z "${VAULT_TOKEN:-}" ] || [ "$VAULT_TOKEN" = "null" ]; then
+            echo "Failed to obtain Vault token" >&2
+            exit 1
+          fi
+
+          echo "VAULT_TOKEN=$VAULT_TOKEN" >> "$GITHUB_ENV"
+
+      - name: Read KV v2 secret and export each key=value to env
+        run: |
+          set -euo pipefail
+
+          # Fetch KV v2 secret (note /data/ in the path)
+          RESP=$(curl -fsS -H "X-Vault-Token: $VAULT_TOKEN" \
+            "$VAULT_ADDR/v1/$VAULT_KV_MOUNT/data/$VAULT_APP_PATH")
+
+          # Get keys present in the secret
+          mapfile -t KEYS < <(echo "$RESP" | jq -r '.data.data | keys[]' )
+
+          if [ "${#KEYS[@]}" -eq 0 ]; then
+            echo "No keys found at $VAULT_KV_MOUNT/$VAULT_APP_PATH" >&2
+            exit 1
+          fi
+
+          for KEY in "${KEYS[@]}"; do
+            # Ensure key is a safe ENV VAR name (ALLCAPS, digits/underscores; leading letter/underscore)
+            if [[ ! "$KEY" =~ ^[A-Z_][A-Z0-9_]*$ ]]; then
+              echo "Skipping key '$KEY' (not a safe env var name)" >&2
+              continue
+            fi
+
+            VAL=$(echo "$RESP" | jq -r --arg k "$KEY" '.data.data[$k]')
+            if [ "$VAL" = "null" ] || [ -z "$VAL" ]; then
+              echo "Key '$KEY' in Vault is empty/null; refusing to export" >&2
+              exit 1
+            fi
+
+            # Mask in logs
+            echo "::add-mask::$VAL"
+            # Export to job env (plain line; avoid newlines in values)
+            printf '%s=%s\n' "$KEY" "$VAL" >> "$GITHUB_ENV"
+            echo "Exported $KEY"
+          done
+
+      - name: Stage files for deployment
+        run: |
+          set -euo pipefail
+          rm -rf "$STAGING_DIR"
+          mkdir -p "$STAGING_DIR/workflows"
+
+          # Patch credentials template with env values fetched from Vault
+          envsubst < credentials/credentials.json > "$STAGING_DIR/credentials.patched.json"
+
+          # Copy workflow JSONs
+          find workflows -maxdepth 1 -type f -name "*.json" -exec cp {} "$STAGING_DIR/workflows/" \; || true
+
+          echo "Staged:"
+          ls -l "$STAGING_DIR" || true
+          ls -l "$STAGING_DIR/workflows" || true
+
+      - name: Deploy to n8n (backup → import → health)
+        run: |
+          bash "$DEPLOY_SCRIPT"
