@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   deploy:
-    runs-on: [self-hosted, nas-prod]
+    runs-on: [self-hosted, nas-staging]
 
     env:
       # Deployment settings
