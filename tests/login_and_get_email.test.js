@@ -1,7 +1,7 @@
 const { Client } = require('pg');
 const crypto = require('crypto');
 const { N8NTester } = require('../n8n-workflow-tester');
-// require('dotenv').config({ path: '.local.env' });
+require('dotenv').config({ path: '.local.env' });
 
 jest.setTimeout(60_000);
 

@@ -21,10 +21,11 @@ class N8NTest {
     return this;
   }
 
-  setWebhook({ url, data, method = 'POST', headers = {} }) {
+  setWebhook(webhookName, baseUrl, data, { method = 'POST', headers = {} } = {}) {
     if (this._trigger) throw new Error('Only one trigger/webhook may be set per test');
-    if (!url) throw new Error('Webhook URL is required');
-    this._trigger = { type: 'webhook', url, data, method, headers };
+    if (!baseUrl) throw new Error('You must provide a BASE_URL for the webhook');
+
+    this._trigger = { type: 'webhook', webhookName, baseUrl, data, method, headers };
     return this;
   }
 
@@ -96,10 +97,35 @@ class N8NTest {
     if (!this._trigger || this._trigger.type !== 'webhook') {
       throw new Error('Use setWebhook(...) for webhook-based tests');
     }
-    // the user must have the workflow active; we try to activate to be safe
+
+    // 1) Load workflow JSON
+    let wf = await readWorkflow(this.parent.workflowPath);
+
+    // 2) Apply mocks
+    for (const m of this._mocks) wf = mockNode(wf, m.nodeName, m.data);
+    if (this.parent.id) wf.id = this.parent.id;
+
+    // 3) Import workflow to n8n
+    const tmpFile = path.join(this.parent._tmpDir, `wf-${Date.now()}.json`);
+    await writeWorkflow(tmpFile, wf);
+    await this._importWorkflow(tmpFile);
+
+    // 4) Activate workflow
     try { await this._activateWorkflow(); } catch (_) {}
 
-    const { url, data, method, headers } = this._trigger;
+    // 5) Resolve webhook URL
+    const node = wf.nodes.find(
+      n => n.name === this._trigger.webhookName && n.type?.includes('n8n-nodes-base.webhook')
+    );
+    if (!node) throw new Error(`Webhook node "${this._trigger.webhookName}" not found in workflow JSON`);
+
+    const webhookPath = node.parameters.path;
+    if (!webhookPath) throw new Error(`Webhook node "${this._trigger.webhookName}" has no parameters.path`);
+
+    const url = `${this._trigger.baseUrl.replace(/\/$/, '')}/webhook/${webhookPath}`;
+
+    // 6) Fire webhook
+    const { data, method, headers } = this._trigger;
     const res = await axios.request({ url, method, data, headers, validateStatus: () => true });
     return { code: res.status, data: res.data };
   }

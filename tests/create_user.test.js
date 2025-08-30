@@ -2,7 +2,9 @@
 const { Client } = require('pg');
 const crypto = require('crypto');
 const { N8NTester } = require('../n8n-workflow-tester');
-// require('dotenv').config({ path: '.local.env' });
+require('dotenv').config({ path: '.local.env' });
+
+
 
 // --- config you can tweak ---
 const dbConfig = {
@@ -19,7 +21,7 @@ const WORKFLOW_PATH = process.env.WORKFLOWS_PATH + "/YAHdeeXkYbwOOQJk.json";
 const CREDS_PATH = process.env.CREDS_PATH;
 
 // If you want to run the webhook test, set an actual URL here or via env
-const WEBHOOK_URL = process.env.WEBHOOK_URL;
+const BASE_URL = process.env.BASE_URL;
 
 // --- pg client ---
 const client = new Client(dbConfig);
@@ -39,6 +41,8 @@ const n8nTester = new N8NTester({
 
 jest.setTimeout(60_000); // n8n CLI + docker can be a bit slow
 
+
+if (process.env.ENV === "DEV" || process.env.ENV === "STAGING")
 describe('Test My Workflow', () => {
   beforeAll(async () => {
     await client.connect();
@@ -69,11 +73,9 @@ describe('Test My Workflow', () => {
 
     const user = crypto.randomUUID().replaceAll('-', '');
     const webhookData = {
-      body: {
         username: user,
         email: `${user}@test.com`,
         password: user,
-      },
     };
 
     // Use CLI path by injecting a Manual Trigger + Edit Fields into the workflow
@@ -89,12 +91,12 @@ describe('Test My Workflow', () => {
     expect(output.node('Hash Password').data).toHaveProperty("hashed_password");
   
     const hashed_password = output.node('Hash Password').data.hashed_password;
-    expect(hashed_password).not.toBe(webhookData.body.password);
+    expect(hashed_password).not.toBe(webhookData.password);
     expect(hashed_password.length).toBeGreaterThan(10);
 
-    // Remove Password node still contains user/email under body.*
-    expect(output.node('Remove Password').data.username).toBe(webhookData.body.username);
-    expect(output.node('Remove Password').data.email).toBe(webhookData.body.email);
+    // Remove Password node still contains user/email under *
+    expect(output.node('Remove Password').data.username).toBe(webhookData.username);
+    expect(output.node('Remove Password').data.email).toBe(webhookData.email);
     expect(output.node('Remove Password').data).not.toHaveProperty('hashed_password');
     expect(output.node('Remove Password').data).toHaveProperty('password');
 
@@ -111,51 +113,26 @@ describe('Test My Workflow', () => {
       [insertedId],
     );
     const dbUser = rows[0];
-    expect(dbUser.username).toBe(webhookData.body.username);
-    expect(dbUser.email).toBe(webhookData.body.email);
+    expect(dbUser.username).toBe(webhookData.username);
+    expect(dbUser.email).toBe(webhookData.email);
   });
-
-  /* test('Correct insertion into database with webhook', async () => {
-    const n8nTest = n8nTester.test();
-
-    const user = crypto.randomUUID().replaceAll('-', '');
-    const webhookData = {
-      body: {
-        username: user,
-        email: `${user}@test.com`,
-        password: user,
-      },
-    };
-
-    n8nTest.setWebhook({ url: WEBHOOK_URL, data: webhookData });
-
-    const response = await n8nTest.triggerWebhook();
-	
-	console.log(response.code)
-
-    // With webhooks, you only have the HTTP response – no per-node traces.
-    expect(response.code).toBe(204); // adjust if your webhook returns something else
-    expect(response.data).toStrictEqual(webhookData);
-  });*/
 
  test('Correct insertion into mocked database', async () => {
     const n8nTest = n8nTester.test();
 
     const user = crypto.randomUUID().replaceAll('-', '');
     const webhookData = {
-      body: {
         username: user,
         email: `${user}@test.com`,
         password: user,
-      },
     };
 
     // Replace the DB node with a Set node that emits a fake DB record
     n8nTest.mockNode('Insert rows in a table', {
       id: user,
-      username: webhookData.body.username,
-      email: webhookData.body.email,
-      password: webhookData.body.password,
+      username: webhookData.username,
+      email: webhookData.email,
+      password: webhookData.password,
       created_at: new Date().toISOString(),
     });
 
@@ -178,19 +155,17 @@ describe('Test My Workflow', () => {
 
     const user = crypto.randomUUID().replaceAll('-', '');
     const webhookData = {
-      body: {
         username: user,
         email: `${user}@test.com`,
         password: user,
-      },
     };
 
     // Replace the DB node with a Set node that emits a fake DB record
     n8nTest.mockNode('Remove Password',
       {
-      "username": webhookData.body.username,
-      "email": webhookData.body.email,
-      "password": webhookData.body.password,
+      "username": webhookData.username,
+      "email": webhookData.email,
+      "password": webhookData.password,
       }
     )
 
@@ -213,11 +188,9 @@ describe('Test My Workflow', () => {
 
     const user = crypto.randomUUID().replaceAll('-', '');
     const webhookData = {
-      body: {
         username: '',
         email: `${user}@test.com`,
         password: user,
-      },
     };
 
     n8nTest.setTrigger('Webhook', webhookData);
@@ -232,5 +205,54 @@ describe('Test My Workflow', () => {
     const stop = output.node('Stop and Error');
     expect(stop.executionStatus).toBe('error');
     expect(stop.errorMessage).toBe('Invalid parameters');
+  });
+});
+
+if (process.env.ENV === "STAGING")
+  describe('Running webhook tests',() => {
+    beforeAll(async () => {
+      await client.connect();
+      // Patch and import credentials (by name) so n8n uses our test DB
+      await n8nTester.setCredential('Postgres account', {
+      POSTGRES_ACCOUNT_USER: dbConfig['user'],
+      POSTGRES_ACCOUNT_DATABASE: dbConfig['database'],
+      POSTGRES_ACCOUNT_HOST: dbConfig['host'],
+      POSTGRES_ACCOUNT_PORT: dbConfig['port'],
+      POSTGRES_ACCOUNT_PASSWORD: dbConfig['password']
+      });
+    });
+  
+    beforeEach(async () => {
+      await resetDatabase();
+    });
+  
+    afterEach(async () => {
+        await n8nTester.restoreWorkflow();
+    });
+  
+    afterAll(async () => {
+      await client.end();
+    });
+  
+    test('Correct insertion into database with webhook', async () => {
+    const n8nTest = n8nTester.test();
+
+    const user = crypto.randomUUID().replaceAll('-', '');
+    const webhookData = {
+        username: user,
+        email: `${user}@test.com`,
+        password: user,
+    };
+
+    n8nTest.setWebhook('Webhook', BASE_URL, webhookData);
+
+    const response = await n8nTest.triggerWebhook();
+
+    // With webhooks, you only have the HTTP response – no per-node traces.
+    expect(response.code).toBe(204); // adjust if your webhook returns something else
+    expect(response.data.username).toBe(webhookData.username);
+    expect(response.data.email).toBe(webhookData.email);
+    expect(response.data).toHaveProperty('id');
+    expect(response.data).toHaveProperty('created_at');
   });
 });
