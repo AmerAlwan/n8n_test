@@ -21,11 +21,11 @@ class N8NTest {
     return this;
   }
 
-  setWebhook(webhookName, baseUrl, data, { headers = {} } = {}) {
+  setWebhook(webhookName, baseUrl, data, { method, headers = {} } = {}) {
     if (this._trigger) throw new Error('Only one trigger/webhook may be set per test');
     if (!baseUrl) throw new Error('You must provide a BASE_URL for the webhook');
 
-    this._trigger = { type: 'webhook', webhookName, baseUrl, data, headers };
+    this._trigger = { type: 'webhook', webhookName, baseUrl, data, method, headers };
     return this;
   }
 
@@ -124,12 +124,11 @@ class N8NTest {
 
     const url = `${this._trigger.baseUrl.replace(/\/$/, '')}/webhook/${webhookPath}`;
 
-    const method = (node.parameters.httpMethod || 'GET').toUpperCase();
     // 6) Fire webhook
-    const { data, headers } = this._trigger;
-    console.log(node.parameters.httpMethod);
-    console.dir(`▶ Triggering webhook ${method} ${url} ...`, { depth: null });
-    const res = await axios.request({ url, method, data, headers, validateStatus: () => true });
+    const { data, headers, method } = this._trigger;
+
+    const httpMethod = (method || node.parameters.httpMethod || 'GET').toUpperCase();
+    const res = await axios.request({ url, httpMethod, data, headers, validateStatus: () => true });
     return { code: res.status, data: res.data };
   }
 }
