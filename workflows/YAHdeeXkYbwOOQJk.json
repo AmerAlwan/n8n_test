@@ -1,6 +1,6 @@
 {
   "createdAt": "2025-08-20T06:40:59.116Z",
-  "updatedAt": "2025-08-31T01:54:17.801Z",
+  "updatedAt": "2025-08-31T02:20:10.419Z",
   "id": "YAHdeeXkYbwOOQJk",
   "name": "Add user to database",
   "active": false,
@@ -246,9 +246,7 @@
       "parameters": {
         "respondWith": "json",
         "responseBody": "={\n  \"username\": \"{{ $json.username }}\",\n  \"email\": \"{{ $json.email }}\"\n}",
-        "options": {
-          "responseCode": 204
-        }
+        "options": {}
       },
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.4,
@@ -332,7 +330,7 @@
     "templateCredsSetupCompleted": true
   },
   "pinData": {},
-  "versionId": "3f298a77-6163-422d-a68a-fe1849236060",
+  "versionId": "1bd241bc-c55c-4d9e-a189-489219174186",
   "triggerCount": 1,
   "tags": [],
   "shared": [
