@@ -240,7 +240,7 @@ if (process.env.ENV === "STAGING")
     const response = await n8nTest.triggerWebhook();
 
     // With webhooks, you only have the HTTP response – no per-node traces.
-    expect(response.code).toBe(204); // adjust if your webhook returns something else
+    expect(response.code).toBe(200); // adjust if your webhook returns something else
     expect(response.data.username).toBe(webhookData.username);
     expect(response.data.email).toBe(webhookData.email);
     expect(response.data).toHaveProperty('id');
