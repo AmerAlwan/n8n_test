@@ -6,6 +6,7 @@ on:
     paths:
       - "workflows/**"
       - "credentials/**"
+      - "tests/**"
       - ".github/workflows/cd.yml"
   workflow_dispatch: {}
 
