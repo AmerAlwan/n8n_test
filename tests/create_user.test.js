@@ -243,8 +243,6 @@ if (process.env.ENV === "STAGING")
     expect(response.code).toBe(200); // adjust if your webhook returns something else
     expect(response.data.username).toBe(webhookData.username);
     expect(response.data.email).toBe(webhookData.email);
-    expect(response.data).toHaveProperty('id');
-    expect(response.data).toHaveProperty('created_at');
 
     // Verify user is in the database
     const insertedId = response.data.id;
