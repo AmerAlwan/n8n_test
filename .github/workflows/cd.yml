@@ -101,7 +101,7 @@ jobs:
               echo "[*] Running deploy script"
               sh "$DEPLOY_SCRIPT"
 
-              echo "Run Jest staging tests"
+              echo "[*] Running Jest staging tests"
               
               cd "$WORKING_DIR/n8n-workflow-tester"
               npm install
@@ -109,5 +109,5 @@ jobs:
               cd "$WORKING_DIR"
               npm install
               
-              npm test
+              npm test -- --silent=false
             '
