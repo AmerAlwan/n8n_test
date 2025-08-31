@@ -110,5 +110,5 @@ jobs:
               cd "$WORKING_DIR"
               npm install
               
-              npm test -- --silent=false
+              npm test
             '
