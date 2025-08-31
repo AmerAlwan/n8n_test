@@ -245,10 +245,9 @@ if (process.env.ENV === "STAGING")
     expect(response.data.email).toBe(webhookData.email);
 
     // Verify user is in the database
-    const insertedId = response.data.id;
     const { rows } = await client.query(
-      'SELECT username, email FROM users WHERE id = $1',
-      [insertedId],
+      'SELECT username, email FROM users WHERE username = $1',
+      [response.data.username],
     );
     const dbUser = rows[0];
     expect(dbUser.username).toBe(webhookData.username);
