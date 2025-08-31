@@ -72,17 +72,18 @@ describe('Test My Workflow', () => {
     const n8nTest = n8nTester.test();
 
     const user = crypto.randomUUID().replaceAll('-', '');
-    const webhookData = {
+    const webhookData = { 
+      body: {
         username: user,
         email: `${user}@test.com`,
         password: user,
+      }
     };
 
     // Use CLI path by injecting a Manual Trigger + Edit Fields into the workflow
     n8nTest.setTrigger('Webhook', webhookData);
 
     const output = await n8nTest.trigger();
-
     expect(output.executionStatus).toBe('success');
 
     // Node traces
@@ -91,12 +92,12 @@ describe('Test My Workflow', () => {
     expect(output.node('Hash Password').data).toHaveProperty("hashed_password");
   
     const hashed_password = output.node('Hash Password').data.hashed_password;
-    expect(hashed_password).not.toBe(webhookData.password);
+    expect(hashed_password).not.toBe(webhookData.body.password);
     expect(hashed_password.length).toBeGreaterThan(10);
 
     // Remove Password node still contains user/email under *
-    expect(output.node('Remove Password').data.username).toBe(webhookData.username);
-    expect(output.node('Remove Password').data.email).toBe(webhookData.email);
+    expect(output.node('Remove Password').data.username).toBe(webhookData.body.username);
+    expect(output.node('Remove Password').data.email).toBe(webhookData.body.email);
     expect(output.node('Remove Password').data).not.toHaveProperty('hashed_password');
     expect(output.node('Remove Password').data).toHaveProperty('password');
 
@@ -113,26 +114,28 @@ describe('Test My Workflow', () => {
       [insertedId],
     );
     const dbUser = rows[0];
-    expect(dbUser.username).toBe(webhookData.username);
-    expect(dbUser.email).toBe(webhookData.email);
+    expect(dbUser.username).toBe(webhookData.body.username);
+    expect(dbUser.email).toBe(webhookData.body.email);
   });
 
  test('Correct insertion into mocked database', async () => {
     const n8nTest = n8nTester.test();
 
     const user = crypto.randomUUID().replaceAll('-', '');
-    const webhookData = {
+    const webhookData = { 
+      body: {
         username: user,
         email: `${user}@test.com`,
         password: user,
+      }
     };
 
     // Replace the DB node with a Set node that emits a fake DB record
     n8nTest.mockNode('Insert rows in a table', {
       id: user,
-      username: webhookData.username,
-      email: webhookData.email,
-      password: webhookData.password,
+      username: webhookData.body.username,
+      email: webhookData.body.email,
+      password: webhookData.body.password,
       created_at: new Date().toISOString(),
     });
 
@@ -154,18 +157,20 @@ describe('Test My Workflow', () => {
     const n8nTest = n8nTester.test();
 
     const user = crypto.randomUUID().replaceAll('-', '');
-    const webhookData = {
+    const webhookData = { 
+      body: {
         username: user,
         email: `${user}@test.com`,
         password: user,
+      }
     };
 
     // Replace the DB node with a Set node that emits a fake DB record
     n8nTest.mockNode('Remove Password',
       {
-      "username": webhookData.username,
-      "email": webhookData.email,
-      "password": webhookData.password,
+      "username": webhookData.body.username,
+      "email": webhookData.body.email,
+      "password": webhookData.body.password,
       }
     )
 
@@ -187,10 +192,12 @@ describe('Test My Workflow', () => {
     const n8nTest = n8nTester.test();
 
     const user = crypto.randomUUID().replaceAll('-', '');
-    const webhookData = {
+    const webhookData = { 
+      body: {
         username: '',
         email: `${user}@test.com`,
         password: user,
+      }
     };
 
     n8nTest.setTrigger('Webhook', webhookData);
@@ -238,10 +245,12 @@ if (process.env.ENV === "STAGING")
     const n8nTest = n8nTester.test();
 
     const user = crypto.randomUUID().replaceAll('-', '');
-    const webhookData = {
+    const webhookData = { 
+      body: {
         username: user,
         email: `${user}@test.com`,
         password: user,
+      }
     };
 
     n8nTest.setWebhook('Webhook', BASE_URL, webhookData);
@@ -250,8 +259,8 @@ if (process.env.ENV === "STAGING")
 
     // With webhooks, you only have the HTTP response – no per-node traces.
     expect(response.code).toBe(204); // adjust if your webhook returns something else
-    expect(response.data.username).toBe(webhookData.username);
-    expect(response.data.email).toBe(webhookData.email);
+    expect(response.data.username).toBe(webhookData.body.username);
+    expect(response.data.email).toBe(webhookData.body.email);
     expect(response.data).toHaveProperty('id');
     expect(response.data).toHaveProperty('created_at');
   });

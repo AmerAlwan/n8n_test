@@ -1,6 +1,6 @@
 {
   "createdAt": "2025-08-20T06:40:59.116Z",
-  "updatedAt": "2025-08-30T21:16:17.301Z",
+  "updatedAt": "2025-08-31T01:24:20.940Z",
   "id": "YAHdeeXkYbwOOQJk",
   "name": "Add user to database",
   "active": false,
@@ -245,7 +245,7 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={\n  \"username\": {{ $json.username }},\n  \"email\": {{ $json.email }}\n}",
+        "responseBody": "={\n  \"username\": \"{{ $json.username }}\",\n  \"email\": \"{{ $json.email }}\"\n}",
         "options": {
           "responseCode": 204
         }
@@ -332,7 +332,7 @@
     "templateCredsSetupCompleted": true
   },
   "pinData": {},
-  "versionId": "13da5ce1-cc40-401e-bfe5-e1acc16aae74",
+  "versionId": "4a88f999-76be-44e6-b7aa-524e36cc8f0d",
   "triggerCount": 1,
   "tags": [],
   "shared": [
