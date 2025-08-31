@@ -124,11 +124,11 @@ class N8NTest {
 
     const url = `${this._trigger.baseUrl.replace(/\/$/, '')}/webhook/${webhookPath}`;
 
-    const method = (node.parameters.httpMethod || 'POST').toUpperCase();
+    const method = (node.parameters.httpMethod || 'GET').toUpperCase();
     // 6) Fire webhook
     const { data, headers } = this._trigger;
     console.log(node.parameters.httpMethod);
-    console.dir(`▶ Triggering webhook ${method} ${url} ${data} ${headers} ...`, { depth: null });
+    console.dir(`▶ Triggering webhook ${method} ${url} ...`, { depth: null });
     const res = await axios.request({ url, method, data, headers, validateStatus: () => true });
     return { code: res.status, data: res.data };
   }
