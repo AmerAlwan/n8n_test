@@ -24,6 +24,8 @@ jobs:
       OPENROUTER_ACCOUNT_APIKEY: sk
       N8N_HOST: localhost
       N8N_PORT: 5678
+      ENV: DEV
+      BASE_URL: http://localhost:5678
 
     steps:
       - name: Checkout code
@@ -40,6 +42,8 @@ jobs:
           echo "CREDS_PATH=${CREDS_PATH}" >> .env
           echo "WEBHOOK_URL=${WEBHOOK_URL}" >> .env
           echo "OPENROUTER_ACCOUNT_APIKEY=${OPENROUTER_ACCOUNT_APIKEY}" >> .env
+          echo "ENV=${ENV}" >> .env
+          echo "BASE_URL=${BASE_URL}" >> .env
 
       - name: Patch credentials.json with env values
         run: |
