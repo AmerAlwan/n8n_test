@@ -102,6 +102,12 @@ jobs:
               sh "$DEPLOY_SCRIPT"
 
               echo "Run Jest staging tests"
+              
+              cd "$WORKING_DIR/n8n-workflow-tester"
+              npm install
+              
               cd "$WORKING_DIR"
+              npm install
+              
               npm test
             '
