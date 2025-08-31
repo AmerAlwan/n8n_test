@@ -1,6 +1,6 @@
 {
   "createdAt": "2025-08-20T06:40:59.116Z",
-  "updatedAt": "2025-08-31T01:24:20.940Z",
+  "updatedAt": "2025-08-31T01:54:17.801Z",
   "id": "YAHdeeXkYbwOOQJk",
   "name": "Add user to database",
   "active": false,
@@ -229,7 +229,7 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "16bc0461-12ad-4933-bb1d-00e0a3fd8cd9",
-        "responseMode": "lastNode",
+        "responseMode": "responseNode",
         "options": {}
       },
       "type": "n8n-nodes-base.webhook",
@@ -332,7 +332,7 @@
     "templateCredsSetupCompleted": true
   },
   "pinData": {},
-  "versionId": "4a88f999-76be-44e6-b7aa-524e36cc8f0d",
+  "versionId": "3f298a77-6163-422d-a68a-fe1849236060",
   "triggerCount": 1,
   "tags": [],
   "shared": [
