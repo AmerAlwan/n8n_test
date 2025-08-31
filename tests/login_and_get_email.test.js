@@ -85,6 +85,7 @@ async function createUserInDb() {
     await n8nTest.trigger();
 }
 
+if (process.env.ENV === "DEV") {
 describe('Test user login workflow', () => {
     beforeAll(async () => {
         await registerTester.setCredential('Postgres account', credConfig);
@@ -199,7 +200,7 @@ describe('Test get user email workflow', () => {
             { username: testUser.username, exp: Math.floor(Date.now() / 1000) + (60 * 60) },
             "secret"
         );
-        n8nTest.setTrigger('Webhook', {'jwt': jwt_token});
+        n8nTest.setTrigger('Webhook', {'body': {'jwt': jwt_token}});
         const output = await n8nTest.trigger();
         expect(output.executionStatus).toBe('success');
         expect(output.node('Return email').data).toBeDefined(); 
@@ -208,7 +209,7 @@ describe('Test get user email workflow', () => {
     test('Invalid token get user email', async () => {
         const n8nTest = getUserEmailTester.test();
         const jwt_token = "invalid.token.value";
-        n8nTest.setTrigger('Webhook', {'jwt': jwt_token});
+        n8nTest.setTrigger('Webhook', {'body': {'jwt': jwt_token}});
         const output = await n8nTest.trigger();
         expect(output.executionStatus).toBe('success');
         expect(output.node('Return unauthorized').data).toBeDefined();
@@ -259,7 +260,7 @@ describe ('Test all workflows combined', () => {
 
         const getUserEmailTest = getUserEmailTester.test();
 
-        getUserEmailTest.setTrigger('Webhook', {'jwt': jwt_token});
+        getUserEmailTest.setTrigger('Webhook', {'body': {'jwt': jwt_token}});
         
         const getUserEmailOutput = await getUserEmailTest.trigger();
 
@@ -268,5 +269,67 @@ describe ('Test all workflows combined', () => {
         expect(getUserEmailOutput.node('Return email').data.email).toBe(testUser.email);    
     });
 });
+}
+
+if (process.env.ENV === "STAGING")
+  describe('Running webhook tests',() => {
+    test('Correct login with webhook', async () => {
+        const loginTest = loginTester.test();
+        const registerTest = registerTester.test();
+        const user = crypto.randomUUID().replaceAll('-', '');
+        const webhookData = { 
+            username: user,
+            email: `${user}@test.com`,
+            password: user,
+        };
+
+        registerTest.setWebhook('Webhook', BASE_URL, webhookData);
+
+        await registerTest.triggerWebhook();
+
+        loginTest.setWebhook('Webhook', BASE_URL, {
+            username: webhookData.username,
+            password: webhookData.password
+        });
+
+        const loginResponse = await loginTest.triggerWebhook();
+
+        expect(loginResponse.code).toBe(200); // adjust if your webhook returns something else
+        
+        const jwt_token = loginResponse.data.jwt;
+        expect(jwt_token).toBeDefined();
+    });
+
+    test('Correct get email with webhook', async () => {
+        const loginTest = loginTester.test();
+        const registerTest = registerTester.test();
+        const emailTest = getUserEmailTester.test();
+        const user = crypto.randomUUID().replaceAll('-', '');
+        const webhookData = { 
+            username: user,
+            email: `${user}@test.com`,
+            password: user,
+        };
+
+        registerTest.setWebhook('Webhook', BASE_URL, webhookData);
+
+        await registerTest.triggerWebhook();
+
+        loginTest.setWebhook('Webhook', BASE_URL, {
+            username: webhookData.username,
+            password: webhookData.password
+        });
+
+        const loginResponse = await loginTest.triggerWebhook();
+        
+        const jwt_token = loginResponse.data.jwt;
+
+        emailTest.setWebhook('Webhook', BASE_URL, {'jwt': jwt_token});
+        const emailResponse = await emailTest.triggerWebhook();
+        expect(emailResponse.code).toBe(200);
+        expect(emailResponse.data.email).toBe(webhookData.email);
+    });
+});
+
 
 client.end();

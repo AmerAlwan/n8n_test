@@ -1,6 +1,6 @@
 {
   "createdAt": "2025-08-29T01:25:35.448Z",
-  "updatedAt": "2025-08-29T02:34:51.909Z",
+  "updatedAt": "2025-08-31T04:58:54.570Z",
   "id": "RqijrHvyKSEwP50q",
   "name": "Get user email",
   "active": false,
@@ -66,7 +66,7 @@
         "workflowInputs": {
           "mappingMode": "defineBelow",
           "value": {
-            "jwt": "={{ $json.jwt }}"
+            "jwt": "={{ $json.body.jwt }}"
           },
           "matchingColumns": [
             "jwt"
@@ -140,9 +140,7 @@
       "parameters": {
         "respondWith": "json",
         "responseBody": "={\n  \"email\": \"{{ $json.email }}\"\n}",
-        "options": {
-          "responseCode": 200
-        }
+        "options": {}
       },
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.4,
@@ -238,7 +236,7 @@
       }
     ]
   },
-  "versionId": "7f05176e-29a0-46b0-9115-c4b899b5b3cd",
+  "versionId": "8b3b647f-9344-450c-9ac1-826cdb15dc1a",
   "triggerCount": 0,
   "tags": [],
   "shared": [
