@@ -219,22 +219,6 @@ if (process.env.ENV === "STAGING")
   describe('Running webhook tests',() => {
     beforeAll(async () => {
       await client.connect();
-      // Patch and import credentials (by name) so n8n uses our test DB
-      await n8nTester.setCredential('Postgres account', {
-      POSTGRES_ACCOUNT_USER: dbConfig['user'],
-      POSTGRES_ACCOUNT_DATABASE: dbConfig['database'],
-      POSTGRES_ACCOUNT_HOST: dbConfig['host'],
-      POSTGRES_ACCOUNT_PORT: dbConfig['port'],
-      POSTGRES_ACCOUNT_PASSWORD: dbConfig['password']
-      });
-    });
-  
-    beforeEach(async () => {
-      await resetDatabase();
-    });
-  
-    afterEach(async () => {
-        await n8nTester.restoreWorkflow();
     });
   
     afterAll(async () => {
@@ -263,5 +247,18 @@ if (process.env.ENV === "STAGING")
     expect(response.data.email).toBe(webhookData.body.email);
     expect(response.data).toHaveProperty('id');
     expect(response.data).toHaveProperty('created_at');
+
+    // Verify user is in the database
+    const insertedId = response.data.id;
+    const { rows } = await client.query(
+      'SELECT username, email FROM users WHERE id = $1',
+      [insertedId],
+    );
+    const dbUser = rows[0];
+    expect(dbUser.username).toBe(webhookData.body.username);
+    expect(dbUser.email).toBe(webhookData.body.email);
+
+    // Delete the user again
+    await client.query('DELETE FROM users WHERE id = $1', [insertedId]);
   });
 });
