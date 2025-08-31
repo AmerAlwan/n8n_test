@@ -127,7 +127,8 @@ class N8NTest {
     const method = (node.parameters.httpMethod || 'POST').toUpperCase();
     // 6) Fire webhook
     const { data, headers } = this._trigger;
-    console.log(`▶ Triggering webhook ${method} ${url} ${data} ${headers} ...`);
+    console.log(node.parameters.httpMethod);
+    console.dir(`▶ Triggering webhook ${method} ${url} ${data} ${headers} ...`, { depth: null });
     const res = await axios.request({ url, method, data, headers, validateStatus: () => true });
     return { code: res.status, data: res.data };
   }
