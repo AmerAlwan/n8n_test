@@ -100,4 +100,8 @@ jobs:
 
               echo "[*] Running deploy script"
               sh "$DEPLOY_SCRIPT"
+
+              echo "Run Jest staging tests"
+              cd "$WORKING_DIR"
+              npm test
             '
