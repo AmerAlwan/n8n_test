@@ -239,21 +239,23 @@ if (process.env.ENV === "STAGING")
 
     const response = await n8nTest.triggerWebhook();
 
+    const username = response.data.username;
+
     // With webhooks, you only have the HTTP response – no per-node traces.
     expect(response.code).toBe(200); // adjust if your webhook returns something else
-    expect(response.data.username).toBe(webhookData.username);
+    expect(username).toBe(webhookData.username);
     expect(response.data.email).toBe(webhookData.email);
 
     // Verify user is in the database
     const { rows } = await client.query(
       'SELECT username, email FROM users WHERE username = $1',
-      [response.data.username],
+      [username],
     );
     const dbUser = rows[0];
-    expect(dbUser.username).toBe(webhookData.username);
+    expect(username).toBe(webhookData.username);
     expect(dbUser.email).toBe(webhookData.email);
 
     // Delete the user again
-    await client.query('DELETE FROM users WHERE id = $1', [insertedId]);
+    await client.query('DELETE FROM users WHERE username = $1', [username]);
   });
 });
