@@ -132,7 +132,7 @@ jobs:
         run: |
          docker exec -u root n8n-test sh -c "cd /workspace && npm install"
 
-      - name: Install n88n-workflow-tester dependencies inside n8n container
+      - name: Install n8n-workflow-tester dependencies inside n8n container
         run: |
          docker exec -u root n8n-test sh -c "cd /workspace/n8n-workflow-tester && npm install"
 
