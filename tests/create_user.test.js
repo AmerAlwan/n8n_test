@@ -230,11 +230,9 @@ if (process.env.ENV === "STAGING")
 
     const user = crypto.randomUUID().replaceAll('-', '');
     const webhookData = { 
-      body: {
-        username: user,
-        email: `${user}@test.com`,
-        password: user,
-      }
+      username: user,
+      email: `${user}@test.com`,
+      password: user,
     };
 
     n8nTest.setWebhook('Webhook', BASE_URL, webhookData);
@@ -243,8 +241,8 @@ if (process.env.ENV === "STAGING")
 
     // With webhooks, you only have the HTTP response – no per-node traces.
     expect(response.code).toBe(204); // adjust if your webhook returns something else
-    expect(response.data.username).toBe(webhookData.body.username);
-    expect(response.data.email).toBe(webhookData.body.email);
+    expect(response.data.username).toBe(webhookData.username);
+    expect(response.data.email).toBe(webhookData.email);
     expect(response.data).toHaveProperty('id');
     expect(response.data).toHaveProperty('created_at');
 
@@ -255,8 +253,8 @@ if (process.env.ENV === "STAGING")
       [insertedId],
     );
     const dbUser = rows[0];
-    expect(dbUser.username).toBe(webhookData.body.username);
-    expect(dbUser.email).toBe(webhookData.body.email);
+    expect(dbUser.username).toBe(webhookData.username);
+    expect(dbUser.email).toBe(webhookData.email);
 
     // Delete the user again
     await client.query('DELETE FROM users WHERE id = $1', [insertedId]);
