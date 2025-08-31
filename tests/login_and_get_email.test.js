@@ -37,6 +37,8 @@ const AUTHENTICATE_USER_WORKFLOW_PATH = process.env.WORKFLOWS_PATH + '/8xNhUaWFE
 
 const CREDS_PATH = process.env.CREDS_PATH;
 
+const BASE_URL = process.env.BASE_URL;
+
 const registerTester = new N8NTester({
   id: REGISTER_WORKFLOW_ID,
   workflow: REGISTER_WORKFLOW_PATH,
