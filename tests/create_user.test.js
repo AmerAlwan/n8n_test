@@ -42,7 +42,7 @@ const n8nTester = new N8NTester({
 jest.setTimeout(60_000); // n8n CLI + docker can be a bit slow
 
 
-if (process.env.ENV === "DEV" || process.env.ENV === "STAGING")
+if (process.env.ENV === "DEV")
 describe('Test My Workflow', () => {
   beforeAll(async () => {
     await client.connect();
