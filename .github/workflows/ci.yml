@@ -61,7 +61,7 @@ jobs:
           - 5678:5678
         options: >-
           -v ${{ github.workspace }}:/workspace
-          --health-cmd="curl --fail http://localhost:5678/healthz || exit 1"
+          --health-cmd="(wget -q -T 5 -O - http://localhost:5678/healthz 2>/dev/null | grep -qF '{\"status\":\"ok\"}') || exit 1"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=30
