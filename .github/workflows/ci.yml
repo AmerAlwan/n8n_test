@@ -71,13 +71,12 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Generate .env from template
-        run: envsubst < .env.template > .env
-
+        run: envsubst < .env > .env.patched && mv .env.patched .env
+        
       - name: Patch credentials.json with env values
         run: |
           envsubst < credentials/credentials.json > credentials/credentials.patched.json.tmp
           mv credentials/credentials.patched.json.tmp credentials/credentials.json
-          cat credentials/credentials.json
 
       # Get the running service container IDs for docker exec
       - name: Get service container IDs
