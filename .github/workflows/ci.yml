@@ -9,6 +9,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    # Step-level env (for npm, docker exec, etc.)
     env:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin
@@ -30,15 +31,15 @@ jobs:
     services:
       db:
         image: postgres:15-alpine
+        # Can't use ${{ env.* }} here. Use literals, secrets, or vars.
         env:
-          POSTGRES_USER: ${{ env.POSTGRES_USER }}
-          POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
-          POSTGRES_DB: ${{ env.POSTGRES_DB }}
+          POSTGRES_USER: admin            # or: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: admin        # or: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: test               # or: ${{ vars.POSTGRES_DB }}
         ports:
           - 5432:5432
-        # Let Actions wait until healthy
         options: >-
-          --health-cmd="pg_isready -U ${{ env.POSTGRES_USER }} -d ${{ env.POSTGRES_DB }}"
+          --health-cmd="pg_isready -U admin -d test"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=15
@@ -49,16 +50,15 @@ jobs:
           DB_TYPE: postgresdb
           DB_POSTGRESDB_HOST: db
           DB_POSTGRESDB_PORT: 5432
-          DB_POSTGRESDB_DATABASE: ${{ env.POSTGRES_DB }}
-          DB_POSTGRESDB_USER: ${{ env.POSTGRES_USER }}
-          DB_POSTGRESDB_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
+          DB_POSTGRESDB_DATABASE: test       # match above
+          DB_POSTGRESDB_USER: admin          # match above
+          DB_POSTGRESDB_PASSWORD: admin      # match above
           N8N_BASIC_AUTH_ACTIVE: 'false'
           N8N_HOST: 0.0.0.0
           N8N_PORT: 5678
           N8N_PROTOCOL: http
         ports:
           - 5678:5678
-        # Mount the repo into the container so you can run CLI + npm inside it
         options: >-
           -v ${{ github.workspace }}:/workspace
           --health-cmd="curl --fail http://localhost:5678/healthz || exit 1"
@@ -79,7 +79,7 @@ jobs:
           mv credentials/credentials.patched.json.tmp credentials/credentials.json
           cat credentials/credentials.json
 
-      # Grab container IDs for convenient docker exec later
+      # Get the running service container IDs for docker exec
       - name: Get service container IDs
         id: ids
         shell: bash
@@ -89,7 +89,7 @@ jobs:
 
       - name: Create users table for tests
         run: |
-          docker exec ${{ steps.ids.outputs.PG_CID }} psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -c "
+          docker exec ${{ steps.ids.outputs.PG_CID }} psql -U "admin" -d "test" -c "
             CREATE TABLE IF NOT EXISTS users (
               id SERIAL PRIMARY KEY,
               username VARCHAR(255) NOT NULL,
