@@ -27,49 +27,69 @@ jobs:
       ENV: DEV
       BASE_URL: http://localhost:5678
 
+    services:
+      db:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: ${{ env.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
+          POSTGRES_DB: ${{ env.POSTGRES_DB }}
+        ports:
+          - 5432:5432
+        # Let Actions wait until healthy
+        options: >-
+          --health-cmd="pg_isready -U ${{ env.POSTGRES_USER }} -d ${{ env.POSTGRES_DB }}"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=15
+
+      n8n:
+        image: n8nio/n8n:latest
+        env:
+          DB_TYPE: postgresdb
+          DB_POSTGRESDB_HOST: db
+          DB_POSTGRESDB_PORT: 5432
+          DB_POSTGRESDB_DATABASE: ${{ env.POSTGRES_DB }}
+          DB_POSTGRESDB_USER: ${{ env.POSTGRES_USER }}
+          DB_POSTGRESDB_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
+          N8N_BASIC_AUTH_ACTIVE: 'false'
+          N8N_HOST: 0.0.0.0
+          N8N_PORT: 5678
+          N8N_PROTOCOL: http
+        ports:
+          - 5678:5678
+        # Mount the repo into the container so you can run CLI + npm inside it
+        options: >-
+          -v ${{ github.workspace }}:/workspace
+          --health-cmd="curl --fail http://localhost:5678/healthz || exit 1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=30
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Generate .env from template
         run: envsubst < .env.template > .env
-        
+
       - name: Patch credentials.json with env values
         run: |
           envsubst < credentials/credentials.json > credentials/credentials.patched.json.tmp
           mv credentials/credentials.patched.json.tmp credentials/credentials.json
           cat credentials/credentials.json
 
-      - name: Create Docker network
-        run: docker network create n8n-net
-
-      - name: Start postgres container
+      # Grab container IDs for convenient docker exec later
+      - name: Get service container IDs
+        id: ids
+        shell: bash
         run: |
-          docker run -d --name db \
-            --network n8n-net \
-            -e POSTGRES_USER=${POSTGRES_USER} \
-            -e POSTGRES_PASSWORD=${POSTGRES_PASSWORD} \
-            -e POSTGRES_DB=${POSTGRES_DB} \
-            -p 5432:5432 \
-            postgres:15-alpine
-
-      - name: Wait for postgres to be healthy
-        run: |
-          for i in {1..15}; do
-            if docker exec db pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}; then
-              echo "Postgres is healthy"
-              exit 0
-            fi
-            echo "Waiting for postgres to be healthy..."
-            sleep 5
-          done
-          echo "Postgres did not become healthy in time"
-          docker logs db
-          exit 1
+          echo "PG_CID=$(docker ps -q --filter 'ancestor=postgres:15-alpine' | head -n 1)" >> "$GITHUB_OUTPUT"
+          echo "N8N_CID=$(docker ps -q --filter 'ancestor=n8nio/n8n:latest' | head -n 1)" >> "$GITHUB_OUTPUT"
 
       - name: Create users table for tests
         run: |
-          docker exec db psql -U ${POSTGRES_USER} -d ${POSTGRES_DB} -c "
+          docker exec ${{ steps.ids.outputs.PG_CID }} psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -c "
             CREATE TABLE IF NOT EXISTS users (
               id SERIAL PRIMARY KEY,
               username VARCHAR(255) NOT NULL,
@@ -79,64 +99,26 @@ jobs:
             );
           "
 
-      - name: Start n8n Docker container (with tester code mounted)
-        run: |
-          docker pull n8nio/n8n:latest
-          docker run -d \
-            --name n8n-test \
-            --network n8n-net \
-            -e DB_TYPE=postgresdb \
-            -e DB_POSTGRESDB_HOST=db \
-            -e DB_POSTGRESDB_PORT=5432 \
-            -e DB_POSTGRESDB_DATABASE=${POSTGRES_DB} \
-            -e DB_POSTGRESDB_USER=${POSTGRES_USER} \
-            -e DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD} \
-            -e N8N_BASIC_AUTH_ACTIVE=false \
-            -e N8N_HOST=0.0.0.0 \
-            -e N8N_PORT=5678 \
-            -e N8N_PROTOCOL=http \
-            -v ${{ github.workspace }}:/workspace \
-            -p 5678:5678 \
-            --health-cmd="curl --fail http://localhost:5678/healthz || exit 1" \
-            --health-interval=10s \
-            --health-timeout=5s \
-            --health-retries=15 \
-            n8nio/n8n:latest
-
-      - name: Wait for n8n to be healthy
-        run: |
-          for i in {1..15}; do
-            if curl -s http://localhost:5678/healthz | grep -q "ok"; then
-              echo "n8n is healthy"
-              exit 0
-            fi
-            echo "Waiting for n8n to be healthy..."
-            sleep 5
-          done
-          echo "n8n did not become healthy in time"
-          docker logs n8n-test
-          exit 1
-
       - name: Install root dependencies inside n8n container
         run: |
-         docker exec -u root n8n-test sh -c "cd /workspace && npm install"
+          docker exec -u root ${{ steps.ids.outputs.N8N_CID }} sh -c "cd /workspace && npm ci"
 
       - name: Install n8n-workflow-tester dependencies inside n8n container
         run: |
-         docker exec -u root n8n-test sh -c "cd /workspace/n8n-workflow-tester && npm install"
+          docker exec -u root ${{ steps.ids.outputs.N8N_CID }} sh -c "cd /workspace/n8n-workflow-tester && npm ci"
 
       - name: Import credentials via n8n CLI
         run: |
-          docker exec -u root n8n-test n8n import:credentials --input /workspace/credentials/credentials.json --overwrite
+          docker exec -u root ${{ steps.ids.outputs.N8N_CID }} n8n import:credentials --input /workspace/credentials/credentials.json --overwrite
 
       - name: Import workflow via n8n CLI
         run: |
-          docker exec -u root n8n-test n8n import:workflow --input /workspace/workflows/YAHdeeXkYbwOOQJk.json --overwrite
+          docker exec -u root ${{ steps.ids.outputs.N8N_CID }} n8n import:workflow --input /workspace/workflows/YAHdeeXkYbwOOQJk.json --overwrite
 
       - name: Run Jest tests inside n8n container
         run: |
-         docker exec -u root n8n-test sh -c "set -a && [ -f /workspace/.env ] && . /workspace/.env && cd /workspace && npm test"
-    
+          docker exec -u root ${{ steps.ids.outputs.N8N_CID }} sh -c "set -a && [ -f /workspace/.env ] && . /workspace/.env && cd /workspace && npm test"
+
       - name: Show n8n logs on failure
         if: failure()
-        run: docker logs n8n-test
+        run: docker logs ${{ steps.ids.outputs.N8N_CID }}
