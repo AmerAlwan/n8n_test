@@ -35,6 +35,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
+          --name="db"
           --health-cmd="pg_isready -U admin -d test"
           --health-interval=10s
           --health-timeout=5s
@@ -56,6 +57,7 @@ jobs:
         ports:
           - 5678:5678
         options: >-
+          --name="n8n"
           -v ${{ github.workspace }}:/workspace
           --health-cmd="(wget -q -T 5 -O - http://localhost:5678/healthz 2>/dev/null | grep -qF '{\"status\":\"ok\"}') || exit 1"
           --health-interval=10s
