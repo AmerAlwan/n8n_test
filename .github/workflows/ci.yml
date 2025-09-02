@@ -68,9 +68,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Get docker names
-        run: docker ps
-
       - name: Generate .env from template
         run: envsubst < .env > .env.patched && mv .env.patched .env
         
