@@ -332,6 +332,25 @@ if (process.env.ENV === 'STAGING') {
       expect(loginResp.status).toBe(401);
     });
 
+    test('login Unkown User with webhook', async () => {
+        const loginTest = loginTester.test();
+        const user = crypto.randomUUID().replaceAll('-', '');
+        const webhookData = { 
+            username: user,
+            email: `${user}@test.com`,
+            password: user,
+        };
+
+        loginTest.setWebhook('Webhook', BASE_URL, {
+            username: webhookData.username,
+            password: webhookData.password
+        });
+
+        const loginResponse = await loginTest.triggerWebhook();
+
+        expect(loginResponse.code).toBe(401); // adjust if your webhook returns something else
+    });
+
     test('Correct get email with webhook', async () => {
       const user = crypto.randomUUID().replaceAll('-', '');
       const payload = {
