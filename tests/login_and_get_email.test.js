@@ -287,7 +287,7 @@ if (process.env.ENV === "STAGING")
 
         registerTest.setWebhook('Webhook', BASE_URL, webhookData);
 
-        await registerTest.triggerWebhook();
+        console.log(await registerTest.triggerWebhook());    
 
         loginTest.setWebhook('Webhook', BASE_URL, {
             username: webhookData.username,
@@ -332,7 +332,7 @@ if (process.env.ENV === "STAGING")
             password: user,
         };
 
-        registerTest.setWebhook('Webhook', BASE_URL, webhookData);
+        console.log(registerTest.setWebhook('Webhook', BASE_URL, webhookData));
 
         await registerTest.triggerWebhook();
 
