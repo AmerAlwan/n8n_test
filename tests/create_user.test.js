@@ -23,6 +23,8 @@ const CREDS_PATH = process.env.CREDS_PATH;
 // If you want to run the webhook test, set an actual URL here or via env
 const BASE_URL = process.env.BASE_URL;
 
+const REGISTER_PATH = '/webhook/16bc0461-12ad-4933-bb1d-00e0a3fd8cd9';
+
 // --- pg client ---
 const client = new Client(dbConfig);
 
@@ -30,6 +32,20 @@ const client = new Client(dbConfig);
 async function resetDatabase() {
   // adjust if your schema differs
   await client.query('TRUNCATE TABLE users RESTART IDENTITY;');
+}
+
+async function sendRequest(path, method, body, headers = {}) {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method,
+    headers: {
+      'content-type': 'application/json',
+      ...headers,
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  const data = await res.json().catch(() => ({}));
+  return { status: res.status, data };
 }
 
 // --- n8n tester instance ---
@@ -215,47 +231,43 @@ describe('Test My Workflow', () => {
   });
 });
 
-if (process.env.ENV === "STAGING")
-  describe('Running webhook tests',() => {
+if (process.env.ENV === 'STAGING') {
+  describe('Running webhook tests (DB insertion)', () => {
     beforeAll(async () => {
       await client.connect();
     });
-  
+
     afterAll(async () => {
       await client.end();
     });
-  
+
     test('Correct insertion into database with webhook', async () => {
-    const n8nTest = n8nTester.test();
+      const user = crypto.randomUUID().replaceAll('-', '');
+      const payload = {
+        username: user,
+        email: `${user}@test.com`,
+        password: user,
+      };
 
-    const user = crypto.randomUUID().replaceAll('-', '');
-    const webhookData = { 
-      username: user,
-      email: `${user}@test.com`,
-      password: user,
-    };
+      // Trigger webhook (e.g., register)
+      const response = await sendRequest(REGISTER_PATH, 'POST', payload);
 
-    n8nTest.setWebhook('Webhook', BASE_URL, webhookData);
+      // With webhooks, you only have HTTP response
+      expect(response.status).toBe(200); // adjust if your webhook differs
+      expect(response.data?.username).toBe(payload.username);
+      expect(response.data?.email).toBe(payload.email);
 
-    const response = await n8nTest.triggerWebhook();
+      // Verify user is in the DB
+      const { rows } = await client.query(
+        'SELECT username, email FROM users WHERE username = $1',
+        [payload.username],
+      );
+      const dbUser = rows[0];
+      expect(dbUser.username).toBe(payload.username);
+      expect(dbUser.email).toBe(payload.email);
 
-    const username = response.data.username;
-
-    // With webhooks, you only have the HTTP response – no per-node traces.
-    expect(response.code).toBe(200); // adjust if your webhook returns something else
-    expect(username).toBe(webhookData.username);
-    expect(response.data.email).toBe(webhookData.email);
-
-    // Verify user is in the database
-    const { rows } = await client.query(
-      'SELECT username, email FROM users WHERE username = $1',
-      [username],
-    );
-    const dbUser = rows[0];
-    expect(username).toBe(webhookData.username);
-    expect(dbUser.email).toBe(webhookData.email);
-
-    // Delete the user again
-    await client.query('DELETE FROM users WHERE username = $1', [username]);
+      // Cleanup: delete user
+      await client.query('DELETE FROM users WHERE username = $1', [payload.username]);
+    });
   });
-});
+}

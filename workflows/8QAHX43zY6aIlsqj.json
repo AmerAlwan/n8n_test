@@ -1,6 +1,6 @@
 {
   "createdAt": "2025-08-28T23:33:19.521Z",
-  "updatedAt": "2025-08-29T06:09:56.884Z",
+  "updatedAt": "2025-09-03T16:42:19.268Z",
   "id": "8QAHX43zY6aIlsqj",
   "name": "Login user",
   "active": false,
@@ -283,6 +283,7 @@
     },
     {
       "parameters": {
+        "httpMethod": "POST",
         "path": "0691ab98-d0a1-431a-a8a2-082fc85ff260",
         "responseMode": "responseNode",
         "options": {}
@@ -464,7 +465,7 @@
     "templateCredsSetupCompleted": true
   },
   "pinData": {},
-  "versionId": "e1512669-7132-47b6-a00f-6ee9463a054a",
+  "versionId": "9f99019c-4a93-4cce-afc3-0051a10374c7",
   "triggerCount": 0,
   "tags": [],
   "shared": [

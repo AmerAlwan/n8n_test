@@ -1,6 +1,6 @@
 {
   "createdAt": "2025-08-29T01:25:35.448Z",
-  "updatedAt": "2025-08-31T06:01:44.763Z",
+  "updatedAt": "2025-09-03T16:43:18.364Z",
   "id": "RqijrHvyKSEwP50q",
   "name": "Get user email",
   "active": false,
@@ -8,6 +8,7 @@
   "nodes": [
     {
       "parameters": {
+        "httpMethod": "POST",
         "path": "2a93d317-0a2b-4bc4-a95b-2825084d0055",
         "responseMode": "responseNode",
         "options": {}
@@ -237,7 +238,7 @@
       }
     ]
   },
-  "versionId": "a1b84772-f6af-40ae-a9c1-ef55e9167f53",
+  "versionId": "949f6214-f73d-4d1d-8aeb-30dc0bac8f19",
   "triggerCount": 0,
   "tags": [],
   "shared": [

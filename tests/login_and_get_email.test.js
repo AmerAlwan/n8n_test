@@ -306,7 +306,7 @@ if (process.env.ENV === 'STAGING') {
       expect([200, 201]).toContain(registerResp.status);
 
       // 2) Login
-      const loginResp = await sendRequest(LOGIN_PATH, 'GET', {
+      const loginResp = await sendRequest(LOGIN_PATH, 'POST', {
         username: payload.username,
         password: payload.password,
       });
@@ -324,7 +324,7 @@ if (process.env.ENV === 'STAGING') {
         password: user,
       };
 
-      const loginResp = await sendRequest(LOGIN_PATH, 'GET', {
+      const loginResp = await sendRequest(LOGIN_PATH, 'POST', {
         username: payload.username,
         password: payload.password,
       });
@@ -364,7 +364,7 @@ if (process.env.ENV === 'STAGING') {
       expect([200, 201]).toContain(registerResp.status);
 
       // 2) Login
-      const loginResp = await sendRequest(LOGIN_PATH, 'GET', {
+      const loginResp = await sendRequest(LOGIN_PATH, 'POST', {
         username: payload.username,
         password: payload.password,
       });
@@ -375,7 +375,7 @@ if (process.env.ENV === 'STAGING') {
 
       // 3) Get email
       // If your API uses GET + Authorization header instead, change accordingly:
-      const emailResp = await sendRequest(EMAIL_PATH, 'GET', { jwt: jwt_token });
+      const emailResp = await sendRequest(EMAIL_PATH, 'POST', { jwt: jwt_token });
 
       expect(emailResp.status).toBe(200);
       expect(emailResp.data?.email).toBe(payload.email);
