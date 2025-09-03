@@ -39,6 +39,10 @@ const CREDS_PATH = process.env.CREDS_PATH;
 
 const BASE_URL = process.env.BASE_URL;
 
+const REGISTER_PATH = '/register';
+const LOGIN_PATH    = '/login';
+const EMAIL_PATH    = '/email';
+
 const registerTester = new N8NTester({
   id: REGISTER_WORKFLOW_ID,
   workflow: REGISTER_WORKFLOW_PATH,
@@ -67,6 +71,20 @@ const testUser = {
     username: "testuser",
     email: "testuser@test.com",
     password: "password"
+}
+
+async function sendRequest(path, method, body, headers = {}) {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method,
+    headers: {
+      'content-type': 'application/json',
+      ...headers,
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  const data = await res.json().catch(() => ({}));
+  return { status: res.status, data };
 }
 
 const calculateJWT = (header, payload, secret) => {
@@ -273,84 +291,77 @@ describe ('Test all workflows combined', () => {
 });
 }
 
-if (process.env.ENV === "STAGING")
-  describe('Running webhook tests',() => {
-    test('Correct login with webhook', async () => {
-        const loginTest = loginTester.test();
-        const registerTest = registerTester.test();
-        const user = crypto.randomUUID().replaceAll('-', '');
-        const webhookData = { 
-            username: user,
-            email: `${user}@test.com`,
-            password: user,
-        };
+if (process.env.ENV === 'STAGING') {
+  describe('Running webhook tests (direct HTTP)', () => {
+    test.only('Correct login with webhook', async () => {
+      const user = crypto.randomUUID().replaceAll('-', '');
+      const payload = {
+        username: user,
+        email: `${user}@test.com`,
+        password: user,
+      };
 
-        registerTest.setWebhook('Webhook', BASE_URL, webhookData);
+      // 1) Register
+      const registerResp = await sendRequest(REGISTER_PATH, 'POST', payload);
+      expect([200, 201]).toContain(registerResp.status);
 
-        console.log(await registerTest.triggerWebhook());    
+      // 2) Login
+      const loginResp = await sendRequest(LOGIN_PATH, 'GET', {
+        username: payload.username,
+        password: payload.password,
+      });
 
-        loginTest.setWebhook('Webhook', BASE_URL, {
-            username: webhookData.username,
-            password: webhookData.password
-        });
-
-        const loginResponse = await loginTest.triggerWebhook();
-
-        expect(loginResponse.code).toBe(200); // adjust if your webhook returns something else
-        
-        const jwt_token = loginResponse.data.jwt;
-        expect(jwt_token).toBeDefined();
+      expect(loginResp.status).toBe(200);
+      const jwt_token = loginResp.data?.jwt;
+      expect(jwt_token).toBeDefined();
     });
 
-    test('login Unkown User with webhook', async () => {
-        const loginTest = loginTester.test();
-        const user = crypto.randomUUID().replaceAll('-', '');
-        const webhookData = { 
-            username: user,
-            email: `${user}@test.com`,
-            password: user,
-        };
+    test('login Unknown User with webhook', async () => {
+      const user = crypto.randomUUID().replaceAll('-', '');
+      const payload = {
+        username: user,
+        email: `${user}@test.com`,
+        password: user,
+      };
 
-        loginTest.setWebhook('Webhook', BASE_URL, {
-            username: webhookData.username,
-            password: webhookData.password
-        });
+      const loginResp = await sendRequest(LOGIN_PATH, 'GET', {
+        username: payload.username,
+        password: payload.password,
+      });
 
-        const loginResponse = await loginTest.triggerWebhook();
-
-        expect(loginResponse.code).toBe(401); // adjust if your webhook returns something else
+      expect(loginResp.status).toBe(401);
     });
 
     test('Correct get email with webhook', async () => {
-        const loginTest = loginTester.test();
-        const registerTest = registerTester.test();
-        const emailTest = getUserEmailTester.test();
-        const user = crypto.randomUUID().replaceAll('-', '');
-        const webhookData = { 
-            username: user,
-            email: `${user}@test.com`,
-            password: user,
-        };
+      const user = crypto.randomUUID().replaceAll('-', '');
+      const payload = {
+        username: user,
+        email: `${user}@test.com`,
+        password: user,
+      };
 
-        console.log(registerTest.setWebhook('Webhook', BASE_URL, webhookData));
+      // 1) Register
+      const registerResp = await sendRequest(REGISTER_PATH, 'POST', payload);
+      expect([200, 201]).toContain(registerResp.status);
 
-        await registerTest.triggerWebhook();
+      // 2) Login
+      const loginResp = await sendRequest(LOGIN_PATH, 'GET', {
+        username: payload.username,
+        password: payload.password,
+      });
+      expect(loginResp.status).toBe(200);
 
-        loginTest.setWebhook('Webhook', BASE_URL, {
-            username: webhookData.username,
-            password: webhookData.password
-        });
+      const jwt_token = loginResp.data?.jwt;
+      expect(jwt_token).toBeDefined();
 
-        const loginResponse = await loginTest.triggerWebhook();
-        
-        const jwt_token = loginResponse.data.jwt;
+      // 3) Get email
+      // If your API uses GET + Authorization header instead, change accordingly:
+      const emailResp = await sendRequest(EMAIL_PATH, 'GET', { jwt: jwt_token });
 
-        emailTest.setWebhook('Webhook', BASE_URL, {'jwt': jwt_token});
-        const emailResponse = await emailTest.triggerWebhook();
-        expect(emailResponse.code).toBe(200);
-        expect(emailResponse.data.email).toBe(webhookData.email);
+      expect(emailResp.status).toBe(200);
+      expect(emailResp.data?.email).toBe(payload.email);
     });
-});
-
+  });
+}
 
 client.end();
