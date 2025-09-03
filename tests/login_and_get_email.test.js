@@ -39,9 +39,9 @@ const CREDS_PATH = process.env.CREDS_PATH;
 
 const BASE_URL = process.env.BASE_URL;
 
-const REGISTER_PATH = '/register';
-const LOGIN_PATH    = '/login';
-const EMAIL_PATH    = '/email';
+const LOGIN_PATH    = '/webhook/0691ab98-d0a1-431a-a8a2-082fc85ff260';
+const REGISTER_PATH    = '/webhook/16bc0461-12ad-4933-bb1d-00e0a3fd8cd9';
+const EMAIL_PATH = '/webhook/2a93d317-0a2b-4bc4-a95b-2825084d0055';
 
 const registerTester = new N8NTester({
   id: REGISTER_WORKFLOW_ID,
