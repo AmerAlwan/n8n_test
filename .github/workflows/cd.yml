@@ -33,12 +33,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Get changed workflow files
+        id: changed
+        uses: tj-actions/changed-files@v44
+        with:
+          files: |
+            workflows/*.json
+
       - name: Save env variables
         run: |
           env | sed 's/^\([^=]\+\)=\(.*\)$/export \1="\2"/' > .env-docker
 
       - name: Copy env into container
         run: docker cp .env-docker $CONTAINER_NAME:/.env-docker
+
+      - name: Stage changed workflows into container
+        if: steps.changed.outputs.any_changed == 'true'
+        run: |
+          docker exec -u root $CONTAINER_NAME sh -lc 'rm -rf "$STAGING_DIR/workflows" && mkdir -p "$STAGING_DIR/workflows"'
+          for f in ${{ steps.changed.outputs.all_changed_files }}; do
+            echo "Copying $f"
+            docker cp "$f" $CONTAINER_NAME:"$STAGING_DIR/$f"
+          done
         
       - name: Run CD steps inside n8n container
         run: |
