@@ -249,11 +249,9 @@ if (process.env.ENV === 'STAGING') {
         password: user,
       };
 
-      // Trigger webhook (e.g., register)
       const response = await sendRequest(REGISTER_PATH, 'POST', payload);
 
-      // With webhooks, you only have HTTP response
-      expect(response.status).toBe(200); // adjust if your webhook differs
+      expect(response.status).toBe(200);
       expect(response.data?.username).toBe(payload.username);
       expect(response.data?.email).toBe(payload.email);
 

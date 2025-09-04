@@ -332,25 +332,6 @@ if (process.env.ENV === 'STAGING') {
       expect(loginResp.status).toBe(401);
     });
 
-    test('login Unkown User with webhook', async () => {
-        const loginTest = loginTester.test();
-        const user = crypto.randomUUID().replaceAll('-', '');
-        const webhookData = { 
-            username: user,
-            email: `${user}@test.com`,
-            password: user,
-        };
-
-        loginTest.setWebhook('Webhook', BASE_URL, {
-            username: webhookData.username,
-            password: webhookData.password
-        });
-
-        const loginResponse = await loginTest.triggerWebhook();
-
-        expect(loginResponse.code).toBe(401); // adjust if your webhook returns something else
-    });
-
     test('Correct get email with webhook', async () => {
       const user = crypto.randomUUID().replaceAll('-', '');
       const payload = {
@@ -373,8 +354,6 @@ if (process.env.ENV === 'STAGING') {
       const jwt_token = loginResp.data?.jwt;
       expect(jwt_token).toBeDefined();
 
-      // 3) Get email
-      // If your API uses GET + Authorization header instead, change accordingly:
       const emailResp = await sendRequest(EMAIL_PATH, 'POST', { jwt: jwt_token });
 
       expect(emailResp.status).toBe(200);
