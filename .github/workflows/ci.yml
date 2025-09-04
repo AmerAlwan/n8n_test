@@ -18,7 +18,7 @@ jobs:
       POSTGRES_ACCOUNT_PASSWORD: admin
       POSTGRES_ACCOUNT_PORT: 5432
       WORKFLOWS_PATH: workflows
-      CREDS_PATH: credentials/credentials.json
+      CREDS_PATH: credentials
       OPENROUTER_ACCOUNT_APIKEY: sk
       N8N_HOST: localhost
       N8N_PORT: 5678
@@ -29,9 +29,9 @@ jobs:
       db:
         image: postgres:15-alpine
         env:
-          POSTGRES_USER: admin   
-          POSTGRES_PASSWORD: admin       
-          POSTGRES_DB: test             
+          POSTGRES_USER: admin
+          POSTGRES_PASSWORD: admin
+          POSTGRES_DB: test
         ports:
           - 5432:5432
         options: >-
@@ -47,9 +47,9 @@ jobs:
           DB_TYPE: postgresdb
           DB_POSTGRESDB_HOST: db
           DB_POSTGRESDB_PORT: 5432
-          DB_POSTGRESDB_DATABASE: test   
-          DB_POSTGRESDB_USER: admin      
-          DB_POSTGRESDB_PASSWORD: admin  
+          DB_POSTGRESDB_DATABASE: test
+          DB_POSTGRESDB_USER: admin
+          DB_POSTGRESDB_PASSWORD: admin
           N8N_BASIC_AUTH_ACTIVE: 'false'
           N8N_HOST: 0.0.0.0
           N8N_PORT: 5678
@@ -71,11 +71,16 @@ jobs:
       - name: Generate .env from template
         run: envsubst < .env > .env.patched && mv .env.patched .env
         
-      - name: Patch credentials.json with env values
+      - name: Patch credentials with env values
         run: |
-          envsubst < credentials/credentials.json > credentials/credentials.patched.json.tmp
-          mv credentials/credentials.patched.json.tmp credentials/credentials.json
-
+          if ls credentials/*.json >/dev/null 2>&1; then
+            for f in credentials/*.json; do
+              tmp="$f.tmp"
+              envsubst < "$f" > "$tmp"
+              mv "$tmp" "$f"
+            done
+          fi
+          
       - name: Create users table for tests
         run: |
           docker exec db psql -U "admin" -d "test" -c "
@@ -96,9 +101,10 @@ jobs:
         run: |
           docker exec -u root n8n sh -c "cd /workspace/n8n-workflow-tester && npm ci"
 
+      # UPDATED: Import all separate credential files from the directory
       - name: Import credentials via n8n CLI
         run: |
-          docker exec -u root n8n n8n import:credentials --input /workspace/credentials/credentials.json --overwrite
+          docker exec -u root n8n n8n import:credentials --separate --input /workspace/credentials --overwrite
 
       - name: Import workflow via n8n CLI
         run: |
