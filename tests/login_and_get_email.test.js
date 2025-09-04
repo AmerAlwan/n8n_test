@@ -293,7 +293,7 @@ describe ('Test all workflows combined', () => {
 
 if (process.env.ENV === 'STAGING') {
   describe('Running webhook tests (direct HTTP)', () => {
-    test.only('Correct login with webhook', async () => {
+    test('Correct login with webhook', async () => {
       const user = crypto.randomUUID().replaceAll('-', '');
       const payload = {
         username: user,
