@@ -1,7 +1,7 @@
 const { Client } = require('pg');
 const crypto = require('crypto');
 const { N8NTester } = require('../n8n-workflow-tester');
-// require('dotenv').config({ path: '.local.env' });
+// require('dotenv').config({ path: '.local.env' });   
 
 jest.setTimeout(60_000);
 
@@ -106,14 +106,23 @@ async function createUserInDb() {
 }
 
 if (process.env.ENV === "DEV") {
+
+beforeAll(async () => {
+    await registerTester.addCredential('postgres_account_credentials.json', credConfig);
+    await loginTester.addCredential('postgres_account_credentials.json', credConfig);
+    await getUserEmailTester.addCredential('postgres_account_credentials.json', credConfig);
+    await authenticateUserTester.addCredential('postgres_account_credentials.json', credConfig); 
+    await registerTester.importCredentials();
+    await loginTester.importCredentials();
+    await authenticateUserTester.importCredentials();
+    await getUserEmailTester.importCredentials();
+});
+
 describe('Test user login workflow', () => {
     beforeAll(async () => {
-        await registerTester.setCredential('Postgres account', credConfig);
-        await loginTester.setCredential('Postgres account', credConfig);
         await createUserInDb();
     });
     afterEach(async () => {
-        
         await registerTester.restoreWorkflow();
         await loginTester.restoreWorkflow();
     }); 
@@ -152,7 +161,6 @@ describe('Test user login workflow', () => {
 
 describe('Test authenticate user workflow', () => {
     beforeAll(async () => {
-        await authenticateUserTester.setCredential('Postgres account', credConfig); 
         await createUserInDb();
     });
 
@@ -205,7 +213,6 @@ describe('Test authenticate user workflow', () => {
 
 describe('Test get user email workflow', () => {
     beforeAll(async () => {
-        await getUserEmailTester.setCredential('Postgres account', credConfig);
         await createUserInDb();
     });
 
@@ -237,12 +244,8 @@ describe('Test get user email workflow', () => {
     });
 });
 
-describe ('Test all workflows combined', () => {
+describe('Test all workflows combined', () => {
     beforeAll(async () => {
-        await registerTester.setCredential('Postgres account', credConfig);
-        await loginTester.setCredential('Postgres account', credConfig);
-        await getUserEmailTester.setCredential('Postgres account', credConfig);
-        await authenticateUserTester.setCredential('Postgres account', credConfig); 
         await createUserInDb();
     });
 
@@ -255,6 +258,7 @@ describe ('Test all workflows combined', () => {
 
     test('Correct login and get user email', async () => {
         const loginTest = loginTester.test();
+
         const loginData = {
             body: {
                 username: testUser.username,
@@ -287,7 +291,7 @@ describe ('Test all workflows combined', () => {
         expect(getUserEmailOutput.executionStatus).toBe('success');
         expect(getUserEmailOutput.node('Return email').data).toBeDefined();
         expect(getUserEmailOutput.node('Return email').data.email).toBe(testUser.email);    
-    });
+    }, 180000);
 });
 }
 

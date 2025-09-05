@@ -167,36 +167,30 @@ class N8NTester {
    * Queue a credentials patch so that on import we overwrite with test values.
    * (Caller supplies an exported credentials JSON file via constructor)
    */
-  async setCredential(name, data) {
+  async addCredential(path, data) {
     if (!this.credentialsPath) throw new Error('No credentials file provided to N8NTester constructor');
-    this._credsPatch.push({ name, data });
-    await this._importCredentials(); // import immediately for simplicity
+    this._credsPatch.push({ path, data });
   }
 
-  async _importCredentials() {
-    let raw = await fs.readFile(this.credentialsPath, 'utf8');
-    this._credsPatch.forEach(p => {
-      Object.entries(p.data).forEach(([k, v]) => {
-        raw = raw.replaceAll(`$${k}`, v); // simple string replace for any $() references
-      })
-    })
-    // Expected export format: array of creds. We patch by name.
-    // const patched = Array.isArray(raw) ? raw.map(c => {
-    //   if (this._credsPatch.find(p => p.name === c.name)) {
-    //     const patch = this._credsPatch.find(p => p.name === c.name);
-    //     // For many node creds, the values live in c.data
-    //     // We replace the "data" block entirely with the supplied plain object.
-    //     return { ...c, data: patch.data };
-    //   }
-    //   return c;
-    // }) : raw;
-    const out = path.join(this._tmpDir, `creds-${Date.now()}.json`);
-    await fs.mkdir(this._tmpDir, { recursive: true });
-    await fs.writeFile(out, raw, 'utf8');
+async importCredentials() {
+  await fs.mkdir(this._tmpDir, { recursive: true });
 
-    // Import via CLI
-    await runN8n({ runner: this._runner, args: ['import:credentials', '--input', out, '--overwrite'] });
+  for (const p of this._credsPatch) {
+    const absPath = path.join(this.credentialsPath, p.path);
+    let raw = await fs.readFile(absPath, "utf8");
+
+    Object.entries(p.data).forEach(([k, v]) => {
+      raw = raw.replaceAll(`$${k}`, v);
+    });
+
+    const out = path.join(this._tmpDir, path.basename(p.path));
+    await fs.writeFile(out, raw, "utf8");
   }
+  await runN8n({
+    runner: this._runner,
+    args: ["import:credentials", "--separate", "--input", this._tmpDir, "--overwrite"],
+  });
+}
 }
 
 module.exports = N8NTester;

@@ -63,13 +63,14 @@ describe('Test My Workflow', () => {
   beforeAll(async () => {
     await client.connect();
     // Patch and import credentials (by name) so n8n uses our test DB
-    await n8nTester.setCredential('Postgres account', {
+    await n8nTester.addCredential('postgres_account_credentials.json', {
 		POSTGRES_ACCOUNT_USER: dbConfig['user'],
 		POSTGRES_ACCOUNT_DATABASE: dbConfig['database'],
 		POSTGRES_ACCOUNT_HOST: dbConfig['host'],
 		POSTGRES_ACCOUNT_PORT: dbConfig['port'],
 		POSTGRES_ACCOUNT_PASSWORD: dbConfig['password']
-	});
+	  });
+    await n8nTester.importCredentials();
   });
 
   beforeEach(async () => {
