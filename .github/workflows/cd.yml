@@ -105,7 +105,13 @@ jobs:
               echo "[*] Staging files"
               cp -r "$WORKING_DIR/." "$STAGING_DIR/"
 
-              envsubst < "$WORKING_DIR/credentials/credentials.json" > "$STAGING_DIR/credentials/credentials.json"
+               echo "[*] Applying envsubst to credentials (*.json)"
+              if ls "$WORKING_DIR/credentials/"*.json >/dev/null 2>&1; then
+                for f in "$WORKING_DIR/credentials/"*.json; do
+                  b=$(basename "$f")
+                  envsubst < "$f" > "$STAGING_DIR/credentials/$b"
+                done
+              fi
 
               echo "[*] Running deploy script"
               sh "$DEPLOY_SCRIPT"
