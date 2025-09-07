@@ -83,7 +83,7 @@ jobs:
           fi
 
       - name: Create test database
-        run: docker exec db psql -U "admin" -d "test" -c "CREATE DATABASE test;"
+        run: docker exec db psql -U "admin" -d "n8n" -c "CREATE DATABASE test;"
 
       - name: Install root dependencies inside n8n container
         run: |
