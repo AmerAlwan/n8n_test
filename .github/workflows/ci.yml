@@ -101,6 +101,17 @@ jobs:
         run: |
           docker exec -u root n8n sh -c "cd /workspace/n8n-workflow-tester && npm ci"
 
+      - name: Rum Prisma migrations
+        run: |
+          docker exec -u root n8n sh -lc '
+          set -euo pipefail
+          cd /workspace
+          
+          # Run Prisma
+          npx prisma migrate deploy
+          npx prisma generate
+          '
+
       - name: Import credentials via n8n CLI
         run: |
           docker exec -u root n8n n8n import:credentials --separate --input /workspace/credentials
