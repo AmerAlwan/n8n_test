@@ -5,7 +5,6 @@ const { N8NTester } = require('../n8n-workflow-tester');
 // require('dotenv').config({ path: '.local.env' });
 
 
-
 // --- config you can tweak ---
 const dbConfig = {
   user: process.env.POSTGRES_ACCOUNT_USER,
