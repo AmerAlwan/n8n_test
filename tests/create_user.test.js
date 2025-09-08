@@ -252,7 +252,7 @@ if (process.env.ENV === 'STAGING') {
 
       // Cleanup: delete user
       await prisma.users.delete({
-        where: { username: payload.username },
+        where: { id: dbUser.id },
       });
     });
   });
