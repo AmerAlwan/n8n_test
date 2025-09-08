@@ -24,7 +24,7 @@ jobs:
       N8N_PORT: 5678
       ENV: DEV
       BASE_URL: http://localhost:5678
-      DATABASE_URL: postgresql://admin:admin@db:5432/test?schema=test
+      DATABASE_URL: postgresql://admin:admin@db:5432/test?schema=users
 
     services:
       db:
