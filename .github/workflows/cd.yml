@@ -24,6 +24,7 @@ jobs:
       STAGING_DIR: /home/node/.n8n/deployment/cd-staging
       DEPLOY_SCRIPT: /home/node/.n8n/deployment/deploy.sh
       HEALTH_URL: https://n8n_test.aalwan.net/healthz
+      ENV: STAGING
 
       VAULT_ADDR: https://vault.aalwan.net
       VAULT_ROLE: github-n8n-deployer
