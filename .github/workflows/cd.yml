@@ -112,21 +112,21 @@ jobs:
                   envsubst < "$f" > "$STAGING_DIR/credentials/$b"
                 done
               fi
+
+              echo "[*] Running deploy script"
+              sh "$DEPLOY_SCRIPT"
               
               echo "[*] Installing dependencies"
 
-              cd "$WORKING_DIR/n8n-workflow-tester"
+              cd "$STAGING_DIR/n8n-workflow-tester"
               npm install
               
-              cd "$WORKING_DIR"
+              cd "$STAGING_DIR"
               npm install
 
               echo "[*] Run Prisma migrations"
               npx prisma migrate deploy
               npx prisma generate
-              
-              echo "[*] Running deploy script"
-              sh "$DEPLOY_SCRIPT"
               
               echo "[*} Running tests"
               npm test
