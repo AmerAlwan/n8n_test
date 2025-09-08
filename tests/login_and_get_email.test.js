@@ -1,29 +1,19 @@
-const { Client } = require('pg');
 const crypto = require('crypto');
 const { N8NTester } = require('../n8n-workflow-tester');
-// require('dotenv').config({ path: '.local.env' });   
+
+const { PrismaClient } = require('@prisma/client'); 
+
+const prisma = new PrismaClient();
 
 jest.setTimeout(60_000);
 
-const dbConfig = {
-  user: process.env.POSTGRES_ACCOUNT_USER,
-  host: process.env.POSTGRES_ACCOUNT_HOST,
-  database: process.env.POSTGRES_ACCOUNT_DATABASE,
-  password: process.env.POSTGRES_ACCOUNT_PASSWORD,
-  port: process.env.POSTGRES_ACCOUNT_PORT
-};
-
 const credConfig = {
-    POSTGRES_ACCOUNT_USER: dbConfig['user'],
-    POSTGRES_ACCOUNT_DATABASE: dbConfig['database'],
-    POSTGRES_ACCOUNT_HOST: dbConfig['host'],
-    POSTGRES_ACCOUNT_PORT: dbConfig['port'],
-    POSTGRES_ACCOUNT_PASSWORD: dbConfig['password']
+    POSTGRES_ACCOUNT_USER: process.env.POSTGRES_ACCOUNT_USER,
+    POSTGRES_ACCOUNT_DATABASE: process.env.POSTGRES_ACCOUNT_DATABASE,
+    POSTGRES_ACCOUNT_HOST: process.env.POSTGRES_ACCOUNT_HOST,
+    POSTGRES_ACCOUNT_PORT: process.env.POSTGRES_ACCOUNT_PORT,
+    POSTGRES_ACCOUNT_PASSWORD: process.env.POSTGRES_ACCOUNT_PASSWORD
 };
-
-const client = new Client(dbConfig);
-
-client.connect();
 
 const REGISTER_WORKFLOW_ID = 'YAHdeeXkYbwOOQJk';
 const LOGIN_WORKFLOW_ID = '8QAHX43zY6aIlsqj';
@@ -96,13 +86,12 @@ const calculateJWT = (header, payload, secret) => {
     return `${base64Header}.${base64Payload}.${signature}`;
 }
 
-async function createUserInDb() {
-    const n8nTest = registerTester.test();   
-    const data = {
-        body: testUser
-    }
-    n8nTest.setTrigger('Webhook', data);
-    await n8nTest.trigger();
+async function createUserInDb(user) {
+  return await prisma.users.create({ data: user });
+}
+
+async function clearUsers() {
+  return await prisma.users.deleteMany();
 }
 
 if (process.env.ENV === "DEV") {
@@ -120,7 +109,7 @@ beforeAll(async () => {
 
 describe('Test user login workflow', () => {
     beforeAll(async () => {
-        await createUserInDb();
+        await createUserInDb(testUser);
     });
     afterEach(async () => {
         await registerTester.restoreWorkflow();
@@ -161,7 +150,7 @@ describe('Test user login workflow', () => {
 
 describe('Test authenticate user workflow', () => {
     beforeAll(async () => {
-        await createUserInDb();
+        await createUserInDb(testUser);
     });
 
     afterEach(async () => {
@@ -213,7 +202,7 @@ describe('Test authenticate user workflow', () => {
 
 describe('Test get user email workflow', () => {
     beforeAll(async () => {
-        await createUserInDb();
+        await createUserInDb(testUser);
     });
 
     afterEach(async () => {
@@ -246,7 +235,7 @@ describe('Test get user email workflow', () => {
 
 describe('Test all workflows combined', () => {
     beforeAll(async () => {
-        await createUserInDb();
+        await createUserInDb(testUser);
     });
 
     afterEach(async () => {
@@ -365,5 +354,3 @@ if (process.env.ENV === 'STAGING') {
     });
   });
 }
-
-client.end();

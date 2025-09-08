@@ -1,6 +1,6 @@
 {
   "createdAt": "2025-08-29T01:25:35.448Z",
-  "updatedAt": "2025-09-03T16:43:18.364Z",
+  "updatedAt": "2025-09-08T02:16:35.269Z",
   "id": "RqijrHvyKSEwP50q",
   "name": "Get user email",
   "active": false,
@@ -104,8 +104,9 @@
         "operation": "select",
         "schema": {
           "__rl": true,
+          "value": "users",
           "mode": "list",
-          "value": "public"
+          "cachedResultName": "users"
         },
         "table": {
           "__rl": true,
@@ -238,7 +239,7 @@
       }
     ]
   },
-  "versionId": "949f6214-f73d-4d1d-8aeb-30dc0bac8f19",
+  "versionId": "461971f7-3a1c-405c-ba63-b2c5963cc567",
   "triggerCount": 0,
   "tags": [],
   "shared": [

@@ -1,6 +1,6 @@
 {
   "createdAt": "2025-08-28T23:33:19.521Z",
-  "updatedAt": "2025-09-03T16:42:19.268Z",
+  "updatedAt": "2025-09-08T02:16:51.220Z",
   "id": "8QAHX43zY6aIlsqj",
   "name": "Login user",
   "active": false,
@@ -26,8 +26,9 @@
         "operation": "select",
         "schema": {
           "__rl": true,
+          "value": "users",
           "mode": "list",
-          "value": "public"
+          "cachedResultName": "users"
         },
         "table": {
           "__rl": true,
@@ -465,7 +466,7 @@
     "templateCredsSetupCompleted": true
   },
   "pinData": {},
-  "versionId": "9f99019c-4a93-4cce-afc3-0051a10374c7",
+  "versionId": "d3941a59-3aeb-4367-bac8-23a5b7584b44",
   "triggerCount": 0,
   "tags": [],
   "shared": [

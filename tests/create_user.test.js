@@ -1,17 +1,18 @@
 /* eslint-disable jest/no-export, no-undef */
-const { Client } = require('pg');
 const crypto = require('crypto');
 const { N8NTester } = require('../n8n-workflow-tester');
 // require('dotenv').config({ path: '.local.env' });
 
+const { PrismaClient } = require('@prisma/client');
 
-// --- config you can tweak ---
-const dbConfig = {
-  user: process.env.POSTGRES_ACCOUNT_USER,
-  host: process.env.POSTGRES_ACCOUNT_HOST,
-  database: process.env.POSTGRES_ACCOUNT_DATABASE,
-  password: process.env.POSTGRES_ACCOUNT_PASSWORD,
-  port: process.env.POSTGRES_ACCOUNT_PORT
+const prisma = new PrismaClient();
+
+const credConfig = {
+    POSTGRES_ACCOUNT_USER: process.env.POSTGRES_ACCOUNT_USER,
+    POSTGRES_ACCOUNT_DATABASE: process.env.POSTGRES_ACCOUNT_DATABASE,
+    POSTGRES_ACCOUNT_HOST: process.env.POSTGRES_ACCOUNT_HOST,
+    POSTGRES_ACCOUNT_PORT: process.env.POSTGRES_ACCOUNT_PORT,
+    POSTGRES_ACCOUNT_PASSWORD: process.env.POSTGRES_ACCOUNT_PASSWORD
 };
 
 // The workflow id in n8n; keep this stable across imports
@@ -24,13 +25,8 @@ const BASE_URL = process.env.BASE_URL;
 
 const REGISTER_PATH = '/webhook/16bc0461-12ad-4933-bb1d-00e0a3fd8cd9';
 
-// --- pg client ---
-const client = new Client(dbConfig);
-
-// --- helper to reset db for these tests ---
 async function resetDatabase() {
-  // adjust if your schema differs
-  await client.query('TRUNCATE TABLE users RESTART IDENTITY;');
+  await prisma.users.deleteMany();
 }
 
 async function sendRequest(path, method, body, headers = {}) {
@@ -60,17 +56,14 @@ jest.setTimeout(60_000); // n8n CLI + docker can be a bit slow
 if (process.env.ENV === "DEV")
 describe('Test My Workflow', () => {
   beforeAll(async () => {
-    await client.connect();
-    // Patch and import credentials (by name) so n8n uses our test DB
-    await n8nTester.addCredential('postgres_account_credentials.json', {
-		POSTGRES_ACCOUNT_USER: dbConfig['user'],
-		POSTGRES_ACCOUNT_DATABASE: dbConfig['database'],
-		POSTGRES_ACCOUNT_HOST: dbConfig['host'],
-		POSTGRES_ACCOUNT_PORT: dbConfig['port'],
-		POSTGRES_ACCOUNT_PASSWORD: dbConfig['password']
-	  });
+    await n8nTester.addCredential('postgres_account_credentials.json', credConfig);
     await n8nTester.importCredentials();
   });
+
+  afterAll(async () => {
+    await prisma.$disconnect();
+  });
+
 
   beforeEach(async () => {
     await resetDatabase();
@@ -78,10 +71,6 @@ describe('Test My Workflow', () => {
 
   afterEach(async () => {
       await n8nTester.restoreWorkflow();
-  });
-
-  afterAll(async () => {
-    await client.end();
   });
 
   test('Correct insertion into database', async () => {
@@ -125,11 +114,11 @@ describe('Test My Workflow', () => {
 
     // Verify user is in the database
     const insertedId = output.node('Insert rows in a table').data.id;
-    const { rows } = await client.query(
-      'SELECT username, email FROM users WHERE id = $1',
-      [insertedId],
-    );
-    const dbUser = rows[0];
+    const dbUser = await prisma.users.findUnique({
+      where: { id: insertedId },
+      select: { username: true, email: true },
+    });
+
     expect(dbUser.username).toBe(webhookData.body.username);
     expect(dbUser.email).toBe(webhookData.body.email);
   });
@@ -233,12 +222,8 @@ describe('Test My Workflow', () => {
 
 if (process.env.ENV === 'STAGING') {
   describe('Running webhook tests (DB insertion)', () => {
-    beforeAll(async () => {
-      await client.connect();
-    });
-
     afterAll(async () => {
-      await client.end();
+      await prisma.$disconnect();
     });
 
     test('Correct insertion into database with webhook', async () => {
@@ -256,16 +241,18 @@ if (process.env.ENV === 'STAGING') {
       expect(response.data?.email).toBe(payload.email);
 
       // Verify user is in the DB
-      const { rows } = await client.query(
-        'SELECT username, email FROM users WHERE username = $1',
-        [payload.username],
-      );
-      const dbUser = rows[0];
+      const dbUser = await prisma.users.findUnique({
+        where: { username: payload.username },
+        select: { username: true, email: true },
+      });
+
       expect(dbUser.username).toBe(payload.username);
       expect(dbUser.email).toBe(payload.email);
 
       // Cleanup: delete user
-      await client.query('DELETE FROM users WHERE username = $1', [payload.username]);
+      await prisma.users.delete({
+        where: { username: payload.username },
+      });
     });
   });
 }

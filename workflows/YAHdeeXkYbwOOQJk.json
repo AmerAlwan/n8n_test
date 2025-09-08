@@ -1,9 +1,9 @@
 {
   "createdAt": "2025-08-20T06:40:59.116Z",
-  "updatedAt": "2025-09-02T18:57:31.416Z",
+  "updatedAt": "2025-09-08T02:16:14.218Z",
   "id": "YAHdeeXkYbwOOQJk",
   "name": "Add user to database",
-  "active": true,
+  "active": false,
   "isArchived": false,
   "nodes": [
     {
@@ -23,8 +23,9 @@
       "parameters": {
         "schema": {
           "__rl": true,
+          "value": "users",
           "mode": "list",
-          "value": "public"
+          "cachedResultName": "users"
         },
         "table": {
           "__rl": true,
@@ -330,7 +331,7 @@
     "templateCredsSetupCompleted": true
   },
   "pinData": {},
-  "versionId": "1bd241bc-c55c-4d9e-a189-489219174186",
+  "versionId": "71dceea2-49d8-4b4b-982b-b1506c1322e0",
   "triggerCount": 1,
   "tags": [],
   "shared": [
