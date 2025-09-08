@@ -24,6 +24,7 @@ jobs:
       N8N_PORT: 5678
       ENV: DEV
       BASE_URL: http://localhost:5678
+      DATABASE_URL: postgresql://admin:admin@db:5432/test?schema=public
 
     services:
       db:
@@ -31,7 +32,7 @@ jobs:
         env:
           POSTGRES_USER: admin
           POSTGRES_PASSWORD: admin
-          POSTGRES_DB: test
+          POSTGRES_DB: n8n
         ports:
           - 5432:5432
         options: >-
@@ -47,7 +48,7 @@ jobs:
           DB_TYPE: postgresdb
           DB_POSTGRESDB_HOST: db
           DB_POSTGRESDB_PORT: 5432
-          DB_POSTGRESDB_DATABASE: test
+          DB_POSTGRESDB_DATABASE: n8n
           DB_POSTGRESDB_USER: admin
           DB_POSTGRESDB_PASSWORD: admin
           N8N_BASIC_AUTH_ACTIVE: 'false'
@@ -80,18 +81,9 @@ jobs:
               mv "$tmp" "$f"
             done
           fi
-          
-      - name: Create users table for tests
-        run: |
-          docker exec db psql -U "admin" -d "test" -c "
-            CREATE TABLE IF NOT EXISTS users (
-              id SERIAL PRIMARY KEY,
-              username VARCHAR(255) NOT NULL,
-              email VARCHAR(255) NOT NULL,
-              password VARCHAR(255) NOT NULL,
-              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-          "
+
+      - name: Create test database
+        run: docker exec db psql -U "admin" -d "n8n" -c "CREATE DATABASE test;"
 
       - name: Install root dependencies inside n8n container
         run: |
