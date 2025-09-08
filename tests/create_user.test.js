@@ -243,7 +243,7 @@ if (process.env.ENV === 'STAGING') {
       // Verify user is in the DB
       const dbUser = await prisma.users.findFirst({
         where: { username: payload.username },
-        select: { username: true, email: true },
+        select: { id: true, username: true, email: true },
       });
 
       expect(dbUser).not.toBeNull();
