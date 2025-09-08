@@ -241,11 +241,12 @@ if (process.env.ENV === 'STAGING') {
       expect(response.data?.email).toBe(payload.email);
 
       // Verify user is in the DB
-      const dbUser = await prisma.users.findUnique({
-        where: { email: payload.email },
+      const dbUser = await prisma.users.find({
+        where: { username: payload.username },
         select: { username: true, email: true },
       });
 
+      expect(dbUser).not.toBeNull();
       expect(dbUser.username).toBe(payload.username);
       expect(dbUser.email).toBe(payload.email);
 
