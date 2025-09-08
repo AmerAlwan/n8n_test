@@ -87,7 +87,17 @@ const calculateJWT = (header, payload, secret) => {
 }
 
 async function createUserInDb(user) {
-  return await prisma.users.create({ data: user });
+  const hashedPassword = crypto
+    .createHash('sha256')
+    .update(user.password)
+    .digest('hex');
+
+  return await prisma.users.create({
+    data: {
+      ...user,
+      password: hashedPassword,
+    }
+  });
 }
 
 async function clearUsers() {
