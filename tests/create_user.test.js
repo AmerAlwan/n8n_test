@@ -242,7 +242,7 @@ if (process.env.ENV === 'STAGING') {
 
       // Verify user is in the DB
       const dbUser = await prisma.users.findUnique({
-        where: { username: payload.username },
+        where: { email: payload.email },
         select: { username: true, email: true },
       });
 
