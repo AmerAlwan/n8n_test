@@ -72,6 +72,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies (n8n workspace)
+        run: npm ci
+
+      - name: Install dependencies (n8n-workflow-tester)
+        run: npm ci --prefix n8n-workflow-tester
+
       - name: Generate .env from template
         run: envsubst < .env > .env.patched && mv .env.patched .env
 
@@ -84,11 +96,6 @@ jobs:
               mv "$tmp" "$f"
             done
           fi
-
-      - name: Install dependencies inside n8n container
-        run: |
-          docker exec -u root n8n sh -c "cd /workspace && npm ci"
-          docker exec -u root n8n sh -c "cd /workspace/n8n-workflow-tester && npm ci"
 
       - name: Run Prisma migrations
         run: |
