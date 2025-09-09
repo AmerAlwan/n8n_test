@@ -103,9 +103,6 @@ jobs:
                 echo "Exported $KEY"
               done
 
-              echo "[*] Staging files"
-              cp -rT "$WORKING_DIR/." "$STAGING_DIR/"
-
               echo "[*] Applying envsubst to credentials (*.json)"
               if ls "$WORKING_DIR/credentials/"*.json >/dev/null 2>&1; then
                 for f in "$WORKING_DIR/credentials/"*.json; do
