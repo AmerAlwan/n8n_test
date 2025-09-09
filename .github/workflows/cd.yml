@@ -20,9 +20,7 @@ jobs:
 
     env:
       CONTAINER_NAME: n8n_test
-      WORKING_DIR: /home/node/.n8n/deployment/actions-runner/_work/n8n_test/n8n_test
       STAGING_DIR: /home/node/.n8n/deployment/cd-staging
-      DEPLOY_SCRIPT: /home/node/.n8n/deployment/deploy.sh
       HEALTH_URL: https://n8n_test.aalwan.net/healthz
       ENV: STAGING
 
@@ -59,6 +57,7 @@ jobs:
             -e VAULT_ROLE="$VAULT_ROLE" \
             -e VAULT_KV_MOUNT="$VAULT_KV_MOUNT" \
             -e VAULT_APP_PATH="$VAULT_APP_PATH" \
+            -e STAGING_DIR="$STAGING_DIR" \
             -e ENV="$ENV" \
             -u root $CONTAINER_NAME sh -lc '
               set -euo pipefail
@@ -102,15 +101,15 @@ jobs:
               done
 
               echo "[*] Applying envsubst to credentials (*.json)"
-              if ls "$WORKING_DIR/credentials/"*.json >/dev/null 2>&1; then
-                for f in "$WORKING_DIR/credentials/"*.json; do
+              if ls "$GITHUB_WORKSPACE/credentials/"*.json >/dev/null 2>&1; then
+                for f in "$GITHUB_WORKSPACE/credentials/"*.json; do
                   b=$(basename "$f")
                   envsubst < "$f" > "$STAGING_DIR/credentials/$b"
                 done
               fi
 
               echo "[*] Running deploy script"
-              sh "$DEPLOY_SCRIPT"
+              sh "$STAGING_DIR/deploy.sh"
               
               echo "[*] Installing dependencies"
 
