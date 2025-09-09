@@ -100,11 +100,11 @@ jobs:
                 echo "Exported $KEY"
               done
 
-              echo "[*] Applying envsubst to credentials (*.json)"
-              if ls "$GITHUB_WORKSPACE/credentials/"*.json >/dev/null 2>&1; then
-                for f in "$GITHUB_WORKSPACE/credentials/"*.json; do
-                  b=$(basename "$f")
-                  envsubst < "$f" > "$STAGING_DIR/credentials/$b"
+              echo "[*] Applying envsubst to credentials"
+              mkdir -p "$STAGING_DIR/credentials"
+              if ls "$STAGING_DIR/credentials/"*.json >/dev/null 2>&1; then
+                for f in "$STAGING_DIR/credentials/"*.json; do
+                  envsubst < "$f" > "$f.tmp" && mv "$f.tmp" "$f"
                 done
               fi
 
