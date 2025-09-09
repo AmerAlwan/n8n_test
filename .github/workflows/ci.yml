@@ -5,115 +5,117 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
-    env:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin
-      POSTGRES_DB: test
-      POSTGRES_ACCOUNT_HOST: db
-      POSTGRES_ACCOUNT_DATABASE: test
-      POSTGRES_ACCOUNT_USER: admin
-      POSTGRES_ACCOUNT_PASSWORD: admin
-      POSTGRES_ACCOUNT_PORT: 5432
-      WORKFLOWS_PATH: workflows
-      CREDS_PATH: credentials
-      OPENROUTER_ACCOUNT_APIKEY: sk
-      N8N_HOST: localhost
-      N8N_PORT: 5678
-      ENV: DEV
-      BASE_URL: http://localhost:5678
-      DATABASE_URL: postgresql://admin:admin@db:5432/test?schema=users
+    
+    container:
+      image: n8nio/n8n:1.107.3
+      env:
+        # n8n config
+        N8N_BASIC_AUTH_ACTIVE: 'false'
+        N8N_HOST: 0.0.0.0
+        N8N_PORT: 5678
+        N8N_PROTOCOL: http
+
+        # App DB
+        DB_TYPE: postgresdb
+        DB_POSTGRESDB_HOST: db
+        DB_POSTGRESDB_PORT: 5432
+        DB_POSTGRESDB_DATABASE: n8n
+        DB_POSTGRESDB_USER: admin
+        DB_POSTGRESDB_PASSWORD: ${{ secrets.CI_POSTGRES_PASSWORD }}
+        DB_POSTGRESDB_SCHEMA: n8n
+
+      options: >-
+        --name n8n
 
     services:
       db:
-        image: postgres:15-alpine
+        image: postgres:15.7-alpine
         env:
-          POSTGRES_USER: admin
-          POSTGRES_PASSWORD: admin
           POSTGRES_DB: n8n
-        ports:
-          - 5432:5432
+          POSTGRES_USER: admin
+          POSTGRES_PASSWORD: ${{ secrets.CI_POSTGRES_PASSWORD }}
         options: >-
-          --name="db"
-          --health-cmd="pg_isready -U admin -d test"
+          --name db
+          --health-cmd="pg_isready -U admin -d n8n"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=15
 
-      n8n:
-        image: n8nio/n8n:latest
-        env:
-          DB_TYPE: postgresdb
-          DB_POSTGRESDB_HOST: db
-          DB_POSTGRESDB_PORT: 5432
-          DB_POSTGRESDB_DATABASE: n8n
-          DB_POSTGRESDB_USER: admin
-          DB_POSTGRESDB_PASSWORD: admin
-          DB_POSTGRESDB_SCHEMA: n8n
-          N8N_BASIC_AUTH_ACTIVE: 'false'
-          N8N_HOST: 0.0.0.0
-          N8N_PORT: 5678
-          N8N_PROTOCOL: http
-        ports:
-          - 5678:5678
-        options: >-
-          --name="n8n"
-          -v ${{ github.workspace }}:/workspace
-          --health-cmd="(wget -q -T 5 -O - http://localhost:5678/healthz 2>/dev/null | grep -qF '{\"status\":\"ok\"}') || exit 1"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=30
+    env:
+      WORKFLOWS_PATH: workflows
+      CREDS_PATH: credentials
+      OPENROUTER_ACCOUNT_APIKEY: 'dummy'
+      N8N_HOST: localhost
+      N8N_PORT: 5678
+      ENV: DEV
+      BASE_URL: http://localhost:5678
+      DATABASE_URL: postgresql://admin:${{ secrets.CI_POSTGRES_PASSWORD }}@db:5432/n8n?schema=n8n
 
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Generate .env from template
-        run: envsubst < .env > .env.patched && mv .env.patched .env
-        
+        run: |
+          envsubst < .env > .env.patched && mv .env.patched .env
+
       - name: Patch credentials with env values
         run: |
           if ls credentials/*.json >/dev/null 2>&1; then
             for f in credentials/*.json; do
-              tmp="$f.tmp"
-              envsubst < "$f" > "$tmp"
-              mv "$tmp" "$f"
+              envsubst < "$f" > "$f.tmp" && mv "$f.tmp" "$f"
             done
           fi
 
-      - name: Install root dependencies inside n8n container
-        run: |
-          docker exec -u root n8n sh -c "cd /workspace && npm ci"
+      - name: Install root dependencies
+        run: npm ci
 
-      - name: Install n8n-workflow-tester dependencies inside n8n container
-        run: |
-          docker exec -u root n8n sh -c "cd /workspace/n8n-workflow-tester && npm ci"
+      - name: Install n8n-workflow-tester deps (if present)
+        run: cd n8n-workflow-tester && npm ci
 
-      - name: Rum Prisma migrations
+      - name: Run Prisma migrations
         run: |
-          docker exec -u root n8n sh -lc '
           set -euo pipefail
-          cd /workspace
-          
-          # Run Prisma
           npx prisma migrate deploy
           npx prisma generate
-          '
 
       - name: Import credentials via n8n CLI
         run: |
-          docker exec -u root n8n n8n import:credentials --separate --input /workspace/credentials
+          if [ -d "$CREDS_PATH" ]; then
+            n8n import:credentials --separate --input "$CREDS_PATH"
+          fi
 
-      - name: Import workflow via n8n CLI
+      - name: Import workflows via n8n CLI
         run: |
-          docker exec -u root n8n n8n import:workflow --separate --input /workspace/workflows
+          if [ -d "$WORKFLOWS_PATH" ]; then
+            n8n import:workflow --separate --input "$WORKFLOWS_PATH"
+          fi
 
-      - name: Run Jest tests inside n8n container
+      - name: Run Jest tests
+        env:
+          CI: true
         run: |
-          docker exec -u root n8n sh -c "set -a && [ -f /workspace/.env ] && . /workspace/.env && cd /workspace && npm test"
+          set -a
+          [ -f .env ] && . .env
+          set +a
+          npm test -- --reporters=default
+        continue-on-error: false
 
-      - name: Show n8n logs on failure
+      - name: Dump n8n logs on failure
         if: failure()
-        run: docker logs ${{ steps.ids.outputs.N8N_CID }}
+        run: |
+          # running inside the container; print self logs and service health
+          echo "n8n container logs (this job container):"
+          # nothing to docker logs here; just show app output if you have it
+          echo "Postgres health:"
+          pg_isready -h db -U admin -d n8n || true
