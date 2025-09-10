@@ -38,11 +38,17 @@ jobs:
         with:
           files: |
             workflows/*.json
+            credentials/*.json
             
-      - name: Stage changed workflows into container
-        if: steps.changed.outputs.any_changed == 'true'
+      - name: Stage changes into container
         run: |
-          docker exec -u root $CONTAINER_NAME sh -lc 'rm -rf "$STAGING_DIR/workflows" && mkdir -p "$STAGING_DIR/workflows"'
+          docker exec -u root $CONTAINER_NAME sh -lc '
+            rm -rf "$STAGING_DIR/workflows"
+            rm -rf "$STAGING_DIR/credentials"
+            mkdir -p "$STAGING_DIR/workflows"
+            mkdir -p "$STAGING_DIR/credentials"
+          '
+          docker cp .env $CONTAINER_NAME:$STAGING_DIR/.env
           for f in ${{ steps.changed.outputs.all_changed_files }}; do
             echo "Copying $f"
             docker cp "$f" $CONTAINER_NAME:"$STAGING_DIR/$f"
