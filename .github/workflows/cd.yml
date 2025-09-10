@@ -103,9 +103,9 @@ jobs:
               envsubst < "$STAGING_DIR/.env" > "$STAGING_DIR/.env.tmp"
               
               echo "[*] Checking for unsubstituted variables in .env"
-              if grep -q '\$\({\?\w\+}*\?\)' "$STAGING_DIR/.env.tmp"; then
-                echo "Found unresolved variables in .env after substitution:"
-                grep '\$\({\?\w\+}*\?\)' "$STAGING_DIR/.env.tmp"
+              if grep -E '\$\{?[A-Za-z_][A-Za-z0-9_]*\}?' "$STAGING_DIR/.env.tmp" >/dev/null; then
+                echo "Found unresolved variables in .env:"
+                grep -E '\$\{?[A-Za-z_][A-Za-z0-9_]*\}?' "$STAGING_DIR/.env.tmp"
                 exit 1
               fi
               
