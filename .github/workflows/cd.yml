@@ -96,9 +96,12 @@ jobs:
               for KEY in $(echo "$RESP" | jq -r ".data.data | keys[]"); do
                 VAL=$(echo "$RESP" | jq -r --arg k "$KEY" ".data.data[\$k]")
                 echo "::add-mask::$VAL"
-                echo "$KEY=$VAL" >> "$STAGING_DIR/.env"
+                export "$KEY=$VAL"
               done
-              cat "$STAGING_DIR/.env"
+              
+              
+              echo "[*] Substituting values into .env"
+              envsubst < "$STAGING_DIR/.env" > "$STAGING_DIR/.env.tmp" && mv "$STAGING_DIR/.env.tmp" "$STAGING_DIR/.env"
           '
       - name: Inject credentials
         run:  |
