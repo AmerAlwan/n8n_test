@@ -152,7 +152,7 @@ jobs:
       - name: Run post-deploy tests
         id: test_step
         run: |
-          docker exec -u root -e ENV="$ENV" STAGING_DIR="$STAGING_DIR" \
+          docker exec -u root -e ENV="$ENV" -e STAGING_DIR="$STAGING_DIR" \
             $CONTAINER_NAME sh -lc '
 
               cd $STAGING_DIR
