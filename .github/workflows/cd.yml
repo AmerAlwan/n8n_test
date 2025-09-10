@@ -114,7 +114,8 @@ jobs:
           docker exec -u root \
             -e N8N_STAGING_API_KEY="$N8N_STAGING_API_KEY" \
             -e BASE_URL="$BASE_URL" \
-            -e HEALTH_URL="$env.HEALTH_URL" \
+            -e HEALTH_URL="$HEALTH_URL" \
+            -e STAGING_DIR="$STAGING_DIR" \
             $CONTAINER_NAME \
             sh -lc '
               set -euo pipefail
