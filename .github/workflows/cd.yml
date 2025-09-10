@@ -108,6 +108,7 @@ jobs:
           docker exec -u root \
             -e STAGING_DIR="$STAGING_DIR" \
             $CONTAINER_NAME sh -lc '
+            
               source "$STAGING_DIR/.env"
               
               echo "[*] Applying envsubst to credentials"
@@ -151,7 +152,15 @@ jobs:
       - name: Run post-deploy tests
         id: test_step
         run: |
-          docker exec -u root -e ENV="$ENV" $CONTAINER_NAME sh -lc 'cd $STAGING_DIR && npm test'
+          docker exec -u root -e ENV="$ENV" STAGING_DIR="$STAGING_DIR" \
+            $CONTAINER_NAME sh -lc '
+
+              cd $STAGING_DIR
+            
+              source .env
+              
+              npm test
+            '
 
       - name: Run rollback if deploy OR tests failed
         if: steps.deploy_step.outcome == 'failure' || steps.test_step.outcome == 'failure'
