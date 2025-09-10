@@ -112,7 +112,7 @@ jobs:
               if grep -Eq '^[A-Za-z_][A-Za-z0-9_]*=$' "$STAGING_DIR/.env.tmp"; then
                 echo "ERROR: Empty environment variables found in .env:"
                 grep -En '^[A-Za-z_][A-Za-z0-9_]*=$' "$STAGING_DIR/.env.tmp"
-                echo "> You probably forgot to set the variable in the vault"
+                echo "> You probably forgot to set the variables in the vault"
                 exit 1
               fi
               
