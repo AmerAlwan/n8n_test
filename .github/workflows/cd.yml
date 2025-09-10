@@ -99,26 +99,24 @@ jobs:
                 export "$KEY=$VAL"
               done
               
-              echo "[*] Extracting secret keys from Vault"
-              SECRET_KEYS=$(echo "$RESP" | jq -r ".data.data | keys[]")
-              
               echo "[*] Validating that all variables in .env exist in Vault"
+              SECRET_KEYS=$(echo "$RESP" | jq -r ".data.data | keys[]")
               MISSING_KEYS=0
-              while IFS= read -r line; do
-                case "$line" in
-                  \#*|"") continue ;;  # skip comments and empty lines
-                esac
-                VAR_NAME=$(echo "$line" | cut -d= -f1)
+              
+              UNIQUE_KEYS=$(grep -vE '^#|^\s*$' "$STAGING_DIR/.env" | cut -d= -f1 | tr -d ' ' | sort -u)
+              
+              for VAR_NAME in $UNIQUE_KEYS; do
                 if ! echo "$SECRET_KEYS" | grep -q "^$VAR_NAME$"; then
                   echo "❌ Missing secret for variable: $VAR_NAME"
                   MISSING_KEYS=1
                 fi
-              done < "$STAGING_DIR/.env"
+              done
               
               if [ "$MISSING_KEYS" -ne 0 ]; then
                 echo "Aborting due to missing secrets."
                 exit 1
               fi
+
               
               echo "[*] Substituting values into .env"
               envsubst < "$STAGING_DIR/.env" > "$STAGING_DIR/.env.tmp" && mv "$STAGING_DIR/.env.tmp" "$STAGING_DIR/.env"
