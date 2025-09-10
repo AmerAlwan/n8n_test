@@ -178,7 +178,12 @@ jobs:
             -e BASE_URL="$BASE_URL" \
             -e HEALTH_URL="$HEALTH_URL" \
             $CONTAINER_NAME \
-            sh -lc 'sh $STAGING_DIR/rollback.sh"
+            sh -lc '
+            
+              set -euo pipefail
+              
+              sh $STAGING_DIR/rollback.sh
+            '
           
           echo "Rollback completed. Marking job as failed."
           exit 1
