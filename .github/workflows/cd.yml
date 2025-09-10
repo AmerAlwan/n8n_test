@@ -180,10 +180,9 @@ jobs:
             -e HEALTH_URL="$HEALTH_URL" \
             -e STAGING_DIR="$STAGING_DIR" \
             $CONTAINER_NAME sh -lc '
-            
               set -euo pipefail
-              
-              sh $STAGING_DIR/rollback.sh
+              source "$STAGING_DIR/.env"
+              sh "$STAGING_DIR/rollback.sh"
             '
           
           echo "Rollback completed. Marking job as failed."
