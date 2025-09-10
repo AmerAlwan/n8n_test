@@ -1,4 +1,4 @@
-name: n8n CI
+name: n8n CI 🚦
 
 on:
   push:
@@ -15,6 +15,7 @@ concurrency:
 
 jobs:
   test:
+    name: 🧪 Test suite
     runs-on: ubuntu-latest
     environment: CI
     timeout-minutes: 20
@@ -69,25 +70,25 @@ jobs:
           --health-retries=60
 
     steps:
-      - name: Checkout code
+      - name: 📥 Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: 🧰 Set up Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
 
-      - name: Install dependencies (n8n workspace)
+      - name: 📦 Install dependencies (n8n workspace)
         run: npm ci
 
-      - name: Install dependencies (n8n-workflow-tester)
+      - name: 📦 Install dependencies (n8n-workflow-tester)
         run: npm ci --prefix n8n-workflow-tester
 
-      - name: Generate .env from template
+      - name: 🧩 Generate .env from template
         run: envsubst < .env > .env.patched && mv .env.patched .env
 
-      - name: Patch credentials with env values
+      - name: 🔧 Patch credentials with env values
         run: |
           if ls credentials/*.json >/dev/null 2>&1; then
             for f in credentials/*.json; do
@@ -97,7 +98,7 @@ jobs:
             done
           fi
 
-      - name: Run Prisma migrations
+      - name: 🏗️ Run Prisma migrations
         run: |
           docker exec -u root n8n sh -lc '
             set -euo pipefail
@@ -107,13 +108,13 @@ jobs:
             npx prisma generate
           '
 
-      - name: Import credentials via n8n CLI
+      - name: 🔑 Import credentials via n8n CLI
         run: docker exec -u root n8n n8n import:credentials --separate --input /workspace/credentials
 
-      - name: Import workflows via n8n CLI
+      - name: 🗺️ Import workflows via n8n CLI
         run: docker exec -u root n8n n8n import:workflow --separate --input /workspace/workflows
 
-      - name: Run Jest tests inside n8n container
+      - name: 🧪 Run Jest tests inside n8n container
         run: |
           docker exec -u root n8n sh -lc '
             set -e
@@ -122,6 +123,6 @@ jobs:
             npm test
           '
 
-      - name: Show n8n logs on failure
+      - name: 🧯 Show n8n logs on failure
         if: failure()
         run: docker logs n8n
