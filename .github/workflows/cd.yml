@@ -99,6 +99,21 @@ jobs:
                 export "$KEY=$VAL"
               done
               
+              echo "[*] Validating that all variables in .env exist in Vault"
+              MISSING_KEYS=()
+              for KEY in $(grep -oE "^[A-Za-z_][A-Za-z0-9_]*" "$STAGING_DIR/.env"); do
+                if [ -z "${VAULT_SECRETS[$KEY]+_}" ]; then
+                  MISSING_KEYS+=("$KEY")
+                fi
+              done
+      
+              if [ "${#MISSING_KEYS[@]}" -gt 0 ]; then
+                echo "Missing secrets for the following variables in Vault:"
+                for k in "${MISSING_KEYS[@]}"; do
+                  echo "  - $k"
+                done
+                exit 1
+              fi
               
               echo "[*] Substituting values into .env"
               envsubst < "$STAGING_DIR/.env" > "$STAGING_DIR/.env.tmp" && mv "$STAGING_DIR/.env.tmp" "$STAGING_DIR/.env"
