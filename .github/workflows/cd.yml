@@ -152,6 +152,7 @@ jobs:
 
       - name: Run post-deploy tests
         id: test_step
+        if: steps.deploy_step.outcome == 'success'
         continue-on-error: true
         run: |
           docker exec -u root -e ENV="$ENV" -e STAGING_DIR="$STAGING_DIR" \
