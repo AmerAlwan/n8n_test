@@ -110,12 +110,12 @@ jobs:
               fi
 
               echo "[*] Checking for empty variable values"
-              if grep -Eq '(^|=)\s*$' "$STAGING_DIR/.env.tmp"; then
+              if grep -Eq '^[A-Za-z_][A-Za-z0-9_]*=$' "$STAGING_DIR/.env.tmp"; then
                 echo "ERROR: Empty environment variables found in .env:"
-                grep -En '(^|=)\s*$' "$STAGING_DIR/.env.tmp"
+                grep -En '^[A-Za-z_][A-Za-z0-9_]*=$' "$STAGING_DIR/.env.tmp"
                 exit 1
               fi
-
+              
               mv "$STAGING_DIR/.env.tmp" "$STAGING_DIR/.env"
           '
       - name: Inject credentials
