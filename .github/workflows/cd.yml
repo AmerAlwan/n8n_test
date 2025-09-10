@@ -108,7 +108,7 @@ jobs:
               echo "[*] Substituting values into .env"
               envsubst < "$STAGING_DIR/.env" > "$STAGING_DIR/.env.tmp"
 
-              node "$STAGING_DIR/validate_env.js" "$STAGING_DIR/.env"
+              node "$STAGING_DIR/validate_env.js" "$STAGING_DIR/.env.tmp"
               
               mv "$STAGING_DIR/.env.tmp" "$STAGING_DIR/.env"
           '
