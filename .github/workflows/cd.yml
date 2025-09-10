@@ -101,14 +101,21 @@ jobs:
               
               echo "[*] Substituting values into .env"
               envsubst < "$STAGING_DIR/.env" > "$STAGING_DIR/.env.tmp"
-              
-              echo "[*] Checking for unsubstituted variables in .env"
-              if grep -E '\$\{?[A-Za-z_][A-Za-z0-9_]*\}?' "$STAGING_DIR/.env.tmp" >/dev/null; then
-                echo "Found unresolved variables in .env:"
-                grep -E '\$\{?[A-Za-z_][A-Za-z0-9_]*\}?' "$STAGING_DIR/.env.tmp"
+
+              echo "[*] Checking for unresolved variables"
+              if grep -q "\${" "$STAGING_DIR/.env.tmp"; then
+                echo "ERROR: Unresolved environment variables found in .env:"
+                grep "\${" "$STAGING_DIR/.env.tmp"
                 exit 1
               fi
-              
+
+              echo "[*] Checking for empty variable values"
+              if grep -Eq '(^|=)\s*$' "$STAGING_DIR/.env.tmp"; then
+                echo "ERROR: Empty environment variables found in .env:"
+                grep -En '(^|=)\s*$' "$STAGING_DIR/.env.tmp"
+                exit 1
+              fi
+
               mv "$STAGING_DIR/.env.tmp" "$STAGING_DIR/.env"
           '
       - name: Inject credentials
