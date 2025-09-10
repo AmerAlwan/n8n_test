@@ -48,7 +48,7 @@ jobs:
             docker cp "$f" $CONTAINER_NAME:"$STAGING_DIR/$f"
           done
         
-      - name: Retrieve secrets from vault and apply credentials
+      - name: Retrieve secrets from vault
         run: |
           docker exec \
             -e ACTIONS_ID_TOKEN_REQUEST_TOKEN="$ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
@@ -96,18 +96,26 @@ jobs:
               for KEY in $(echo "$RESP" | jq -r ".data.data | keys[]"); do
                 VAL=$(echo "$RESP" | jq -r --arg k "$KEY" ".data.data[\$k]")
                 echo "::add-mask::$VAL"
-                export "$KEY=$VAL"
-                echo "Exported $KEY"
+                echo "$KEY=$VAL" >> "$STAGING_DIR/.env"
               done
-
-              echo "[*] Applying envsubst to credentials"
-              mkdir -p "$STAGING_DIR/credentials"
-              if ls "$STAGING_DIR/credentials/"*.json >/dev/null 2>&1; then
-                for f in "$STAGING_DIR/credentials/"*.json; do
-                  envsubst < "$f" > "$f.tmp" && mv "$f.tmp" "$f"
-                done
-              fi
           '
+      - name: Inject credentials
+        run:  |
+          docker exec -u root \
+            -e STAGING_DIR="$STAGING_DIR"
+          $CONTAINER_NAME sh -lc '
+          
+            source "$STAGING_DIR/.env"
+
+            echo "[*] Applying envsubst to credentials"
+            mkdir -p "$STAGING_DIR/credentials"
+            if ls "$STAGING_DIR/credentials/"*.json >/dev/null 2>&1; then
+              for f in "$STAGING_DIR/credentials/"*.json; do
+                envsubst < "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+              done
+            fi
+          '
+          
       - name: Deploy to staging
         id: deploy_step
         run: |
@@ -116,9 +124,10 @@ jobs:
             -e BASE_URL="$BASE_URL" \
             -e HEALTH_URL="$HEALTH_URL" \
             -e STAGING_DIR="$STAGING_DIR" \
-            $CONTAINER_NAME \
-            sh -lc '
+            $CONTAINER_NAME sh -lc '
               set -euo pipefail
+
+              source "$STAGING_DIR/.env"
               
               echo "[*] Installing tester dependencies"
               cd "$STAGING_DIR/n8n-workflow-tester"
