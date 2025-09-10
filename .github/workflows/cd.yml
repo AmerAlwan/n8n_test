@@ -102,18 +102,17 @@ jobs:
       - name: Inject credentials
         run:  |
           docker exec -u root \
-            -e STAGING_DIR="$STAGING_DIR"
-          $CONTAINER_NAME sh -lc '
-          
-            source "$STAGING_DIR/.env"
-
-            echo "[*] Applying envsubst to credentials"
-            mkdir -p "$STAGING_DIR/credentials"
-            if ls "$STAGING_DIR/credentials/"*.json >/dev/null 2>&1; then
-              for f in "$STAGING_DIR/credentials/"*.json; do
-                envsubst < "$f" > "$f.tmp" && mv "$f.tmp" "$f"
-              done
-            fi
+            -e STAGING_DIR="$STAGING_DIR" \
+            $CONTAINER_NAME sh -lc '
+              source "$STAGING_DIR/.env"
+              
+              echo "[*] Applying envsubst to credentials"
+              mkdir -p "$STAGING_DIR/credentials"
+              if ls "$STAGING_DIR/credentials/"*.json >/dev/null 2>&1; then
+                for f in "$STAGING_DIR/credentials/"*.json; do
+                  envsubst < "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+                done
+              fi
           '
           
       - name: Deploy to staging
