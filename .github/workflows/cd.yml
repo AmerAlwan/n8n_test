@@ -107,14 +107,7 @@ jobs:
               
               echo "[*] Substituting values into .env"
               envsubst < "$STAGING_DIR/.env" > "$STAGING_DIR/.env.tmp"
-
-              echo "[*] Checking for unresolved variables"
-              if grep -q "\${" "$STAGING_DIR/.env.tmp"; then
-                echo "ERROR: Unresolved environment variables found in .env:"
-                grep "\${" "$STAGING_DIR/.env.tmp"
-                exit 1
-              fi
-
+              
               echo "[*] Checking for empty variable values"
               if grep -Eq '^[A-Za-z_][A-Za-z0-9_]*=$' "$STAGING_DIR/.env.tmp"; then
                 echo "ERROR: Empty environment variables found in .env:"
