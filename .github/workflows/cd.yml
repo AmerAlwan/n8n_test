@@ -214,11 +214,16 @@ jobs:
           echo "🔵 Rollback completed. Marking job as failed."
           exit 1
 
-      - name: 📜 Capture container logs
+      - name: 📜 Save container logs as artifact
         if: always()
-        run: |
-          echo "📥 Fetching logs for $CONTAINER_NAME"
-          docker logs $CONTAINER_NAME || echo "⚠️ Could not retrieve logs"
+        run: docker logs $CONTAINER_NAME > n8n-container.log || echo "⚠️ Could not retrieve logs"
+      
+      - name: ⬆️ Upload logs to GitHub
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: n8n-logs
+          path: n8n-container.log
       
       - name: 🟢 Success Summary
         if: success()
