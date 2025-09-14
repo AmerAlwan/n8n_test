@@ -1,24 +1,11 @@
 {
   "createdAt": "2025-08-20T06:40:59.116Z",
-  "updatedAt": "2025-09-08T02:16:14.218Z",
+  "updatedAt": "2025-09-14T02:41:05.987Z",
   "id": "YAHdeeXkYbwOOQJk",
-  "name": "Add user to database",
+  "name": "Register user",
   "active": false,
   "isArchived": false,
   "nodes": [
-    {
-      "parameters": {
-        "errorMessage": "Invalid parameters"
-      },
-      "type": "n8n-nodes-base.stopAndError",
-      "typeVersion": 1,
-      "position": [
-        640,
-        -48
-      ],
-      "id": "29fd2f8a-c198-4bc4-9081-23af9c7127ca",
-      "name": "Stop and Error"
-    },
     {
       "parameters": {
         "schema": {
@@ -124,7 +111,7 @@
           "conditions": [
             {
               "id": "69afcac9-8b80-4e83-b872-54f4e8da0b58",
-              "leftValue": "={{ $json.body.username }}",
+              "leftValue": "={{ $('Webhook').item.json.body.username }}",
               "rightValue": "",
               "operator": {
                 "type": "string",
@@ -257,6 +244,22 @@
       ],
       "id": "a585e27b-1eba-48cb-b330-6930c0a7b3e6",
       "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "respondWith": "noData",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        624,
+        -48
+      ],
+      "id": "f46529c3-17ef-4b63-9f83-6306ec273a9e",
+      "name": "Respond error"
     }
   ],
   "connections": {
@@ -271,7 +274,7 @@
         ],
         [
           {
-            "node": "Stop and Error",
+            "node": "Respond error",
             "type": "main",
             "index": 0
           }
@@ -331,7 +334,7 @@
     "templateCredsSetupCompleted": true
   },
   "pinData": {},
-  "versionId": "71dceea2-49d8-4b4b-982b-b1506c1322e0",
+  "versionId": "0e6defc6-800a-49fd-a887-5396b2d177ff",
   "triggerCount": 1,
   "tags": [],
   "shared": [
