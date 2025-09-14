@@ -1,0 +1,52 @@
+YAHdeeXkYbwOOQJk:
+  workflow_dir: "/workspace/workflows/YAHdeeXkYbwOOQJk.json"
+  tests:
+    test-1:
+      name: "Correct insertion into database"
+      nodes:
+        Webhook:
+          type: trigger
+          data:
+            body:
+              username: "test20"
+              email: "test20@test.com"
+              password: "test20"
+        If:
+          type: node
+          data:
+            body:
+              username: "test20"
+              email: "test20@test.com"
+              password: "test20"
+        Remove Password:
+          type: output
+          data:
+            body:
+              username: "test20"
+              email: "test20@test.com"
+              password: ""
+        Insert rows in a table:
+          type: output
+          executionStatus: "success"
+          includeFields: ["id", "username", "email", "password", "created_at"]
+    test-2:
+      name: "Wrong insertion into database - no username"
+      nodes:
+        Webhook:
+          type: trigger
+          data:
+            body:
+              username: ""
+              email: "test40@test.com"
+              password: "test40"
+        If:
+          type: node
+          data:
+            body:
+              username: ""
+              email: "test40@test.com"
+              password: "test40"
+        Stop and Error:
+          type: output
+          executionStatus: "error"
+          errorMessage: "Invalid parameters"
