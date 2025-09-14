@@ -122,7 +122,7 @@ jobs:
           docker exec -u root n8n sh -lc '
             set -e
             cd /workspace
-            source .env
+            [ -f /workspace/.env ] && set -a && . /workspace/.env && set +a
             npm test -- --ci --reporters=default --reporters=jest-junit
           '
 
