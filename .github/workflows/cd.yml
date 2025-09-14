@@ -47,6 +47,17 @@ jobs:
         #     credentials/*.json
         #     tests/*.js
 
+      - name: 🔍 Verify container health
+        run: |
+          echo "🔍 Checking if $CONTAINER_NAME exists and is running..."
+          if ! docker inspect -f '{{.State.Running}}' $CONTAINER_NAME 2>/dev/null | grep -q true; then
+            echo "❌ Container $CONTAINER_NAME is not running or does not exist."
+            # show what containers are available for debugging
+            docker ps -a
+            exit 1
+          fi
+          echo "✅ Container $CONTAINER_NAME is running."
+
       - name: 📦 Stage changes into container
         run: |
           docker exec -u root $CONTAINER_NAME sh -lc '
@@ -203,9 +214,11 @@ jobs:
           echo "🔵 Rollback completed. Marking job as failed."
           exit 1
 
-      - name: 🧯 Show n8n logs on failure
-        if: failure()
-        run: docker logs n8n
+      - name: 📜 Capture container logs
+        if: always()
+        run: |
+          echo "📥 Fetching logs for $CONTAINER_NAME"
+          docker logs $CONTAINER_NAME || echo "⚠️ Could not retrieve logs"
       
       - name: 🟢 Success Summary
         if: success()
