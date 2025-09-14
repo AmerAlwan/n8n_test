@@ -65,10 +65,9 @@ const wf = deepClone(workflow);
 
 /**
  * Inject a Manual Trigger + Set(&raw JSON) chain that feeds the same targets as the real trigger.
- * Additionally:
- *  - The original trigger node is renamed to "<original>-original" (uniqued if needed).
- *  - The new Edit node takes the original trigger's *exact* name.
- * The original trigger path remains; this only adds a parallel manual path.
+ * The original trigger path remains; this only adds a parallel manual path. This is because
+ * other nodes might depend on those trigger nodes (Ex: The respond to webhook node will give an
+ * error if there is no trigger webhook, so we keep the original trigger webhook)
  */
 function addManualInjection(workflow, originalTriggerName, injectedJson) {
   const wf = deepClone(workflow);
@@ -90,7 +89,7 @@ function addManualInjection(workflow, originalTriggerName, injectedJson) {
     return candidate;
   };
 
-  // Collect ALL outgoing links from the original trigger across all outputs (before renaming).
+  // Collect all outgoing links from the original trigger across all outputs (before renaming).
   const outgoing = (conns[originalTriggerName]?.main || []);
   const allLinks = [];
   for (let outIdx = 0; outIdx < outgoing.length; outIdx++) {
@@ -109,19 +108,18 @@ function addManualInjection(workflow, originalTriggerName, injectedJson) {
   const key = l => `${l.node}|${l.type}|${l.index}`;
   const deduped = Array.from(new Map(allLinks.map(l => [key(l), l])).values());
 
-  // --- Rename the original trigger node and migrate connections ---
+  // Rename the original trigger node and migrate connections
   const renamedTriggerName = uniqueName(`${originalTriggerName}-original`);
 
-  // 1) rename node object
   trigger.name = renamedTriggerName;
 
-  // 2) move its *outgoing* connection entry from the old key to the new key
+  // Move its outgoing connection entry from the old key to the new key
   if (conns[originalTriggerName]) {
     conns[renamedTriggerName] = conns[originalTriggerName];
     delete conns[originalTriggerName];
   }
 
-  // 3) update any *incoming* links that pointed at the old name (paranoia: triggers usually have none)
+  // update any incoming links that pointed at the old name
   for (const srcName of Object.keys(conns)) {
     const outs = conns[srcName]?.main || [];
     for (let outIdx = 0; outIdx < outs.length; outIdx++) {
@@ -134,22 +132,22 @@ function addManualInjection(workflow, originalTriggerName, injectedJson) {
     }
   }
 
-  // --- Create Manual Trigger + Edit (which inherits the *original* trigger name) ---
+  // Create Manual Trigger + Edit. The Edit node will inherit the original trigger name
+  // for the other nodes in the workflow that reference the data from the original node
   const manualName = uniqueName('Manual Trigger (tester)');
   const manual = makeManualTriggerNode({ name: manualName });
-  const edit = makeSetNode({ name: originalTriggerName, json: injectedJson }); // <-- same name as the original trigger had
+  const edit = makeSetNode({ name: originalTriggerName, json: injectedJson });
 
-  // Place reasonably
   manual.position = [0, -192];
   edit.position = [224, -192];
 
   wf.nodes.push(manual);
   wf.nodes.push(edit);
 
-  // Wire Manual -> Edit
+  // Wire Manual trigger node to the Edit node
   conns[manual.name] = { main: [[{ node: edit.name, type: 'main', index: 0 }]] };
 
-  // Wire Edit -> ALL original targets (fan-out), under the *original* trigger name
+  // Wire the Edit node to all original targets (fan-out), under the original trigger name
   // (The renamed real trigger continues to have its original connections under "<original>-original")
   conns[edit.name] = { main: [deduped] };
 

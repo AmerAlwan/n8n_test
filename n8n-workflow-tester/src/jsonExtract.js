@@ -1,6 +1,8 @@
 /**
  * Extract the last well-formed JSON object from a mixed text blob.
- * Handles nested braces and quotes/escapes.
+ * Handles nested braces and quotes/escapes. This is used to extract
+ * the workflow nodes execution results which are outputted in order
+ * in a JSON format.
  */
 function extractLastJsonObject(text) {
   let lastStart = -1;
@@ -37,9 +39,8 @@ function extractLastJsonObject(text) {
         const candidate = text.slice(lastStart, i + 1);
         try {
           const obj = JSON.parse(candidate);
-          // prefer objects that look like n8n CLI output (have `data` or `error`)
           if (obj && (obj.data || obj.error || obj.mode || obj.status)) {
-            return obj; // last *complete* object encountered
+            return obj;
           }
         } catch (_) {
           // ignore; keep scanning

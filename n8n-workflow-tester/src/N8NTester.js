@@ -1,31 +1,23 @@
 const os = require('os');
 const path = require('path');
 const fs = require('fs/promises');
-const axios = require('axios');
 const { runN8n } = require('./cliUtils');
-const extractJsonsFromText = require('extract-json-from-string');
 const { extractLastJsonObject } = require('./jsonExtract');
 const { ExecutionResult } = require('./executionResult');
 const { readWorkflow, writeWorkflow, addManualInjection, mockNode } = require('./workflowMutator');
+const extractJsonsFromText = require('extract-json-from-string');
+const N8NClient = require('./N8NClient');
 
 class N8NTest {
   constructor(parent) {
     this.parent = parent;
-    this._trigger = null;   // { type: 'trigger', nodeName, data }  OR { type: 'webhook', url, data, method, headers }
-    this._mocks = [];       // [{ nodeName, data }]
+    this._trigger = null;
+    this._mocks = [];
   }
 
   setTrigger(nodeName, data) {
     if (this._trigger) throw new Error('Only one trigger/webhook may be set per test');
     this._trigger = { type: 'trigger', nodeName, data };
-    return this;
-  }
-
-  setWebhook(webhookName, baseUrl, data, { method, headers = {} } = {}) {
-    if (this._trigger) throw new Error('Only one trigger/webhook may be set per test');
-    if (!baseUrl) throw new Error('You must provide a BASE_URL for the webhook');
-
-    this._trigger = { type: 'webhook', webhookName, baseUrl, data, method, headers };
     return this;
   }
 
@@ -36,18 +28,18 @@ class N8NTest {
 
   async _importWorkflow(jsonPath) {
     const args = ['import:workflow', '--input', jsonPath, '--overwrite'];
-    await runN8n({ runner: this.parent._runner, args });
+    await runN8n(N8NClient.getContainer(), args);
   }
 
   async _activateWorkflow() {
     const args = ['activate:workflow', '--id', this.parent.id];
-    await runN8n({ runner: this.parent._runner, args });
+    await runN8n(N8NClient.getContainer(), args);
   }
 
   async _executeWorkflowRaw() {
     const args = ['execute', '--id', this.parent.id, '--rawOutput'];
     try {
-      const { stdout, stderr } = await runN8n({ runner: this.parent._runner, args });
+      const { stdout, stderr } = await runN8n(N8NClient.getContainer(), args);
       const parsed = extractJsonsFromText(`${stderr}\n${stdout}`)[0];
       if (!parsed) {
         const snippet = (stdout || stderr || '').slice(-4000);
@@ -55,7 +47,7 @@ class N8NTest {
       }
       return new ExecutionResult(parsed);
     } catch (err) {
-      // Try to parse output even if CLI failed
+      // Try to parse output even if CLI failed so user can test for errors
       const output = `${err.stderr || ''}\n${err.stdout || ''}`;
       const parsed = extractJsonsFromText(output)[0];
       if (parsed) {
@@ -68,7 +60,7 @@ class N8NTest {
   }
 
   async trigger() {
-    if (!this._trigger || this._trigger.type !== 'trigger') {
+    if (!this._trigger) {
       throw new Error('Use setTrigger(...) for CLI-based tests');
     }
     // 1) Start from the original workflow JSON every time
@@ -92,64 +84,13 @@ class N8NTest {
     const execResult = await this._executeWorkflowRaw();
     return execResult;
   }
-
-  async triggerWebhook() {
-    if (!this._trigger || this._trigger.type !== 'webhook') {
-      throw new Error('Use setWebhook(...) for webhook-based tests');
-    }
-
-    // 1) Load workflow JSON
-    let wf = await readWorkflow(this.parent.workflowPath);
-
-    // 2) Apply mocks
-    for (const m of this._mocks) wf = mockNode(wf, m.nodeName, m.data);
-    if (this.parent.id) wf.id = this.parent.id;
-
-    // 3) Import workflow to n8n
-    const tmpFile = path.join(this.parent._tmpDir, `wf-${Date.now()}.json`);
-    await writeWorkflow(tmpFile, wf);
-    await this._importWorkflow(tmpFile);
-
-    // 4) Activate workflow
-    try { await this._activateWorkflow(); } catch (_) {}
-
-    // 5) Resolve webhook URL
-    const node = wf.nodes.find(
-      n => n.name === this._trigger.webhookName && n.type?.includes('n8n-nodes-base.webhook')
-    );
-    if (!node) throw new Error(`Webhook node "${this._trigger.webhookName}" not found in workflow JSON`);
-
-    const webhookPath = node.parameters.path;
-    if (!webhookPath) throw new Error(`Webhook node "${this._trigger.webhookName}" has no parameters.path`);
-
-    const url = `${this._trigger.baseUrl.replace(/\/$/, '')}/webhook/${webhookPath}`;
-
-    // 6) Fire webhook
-    const { data, headers, method } = this._trigger;
-
-    const httpMethod = (method || node.parameters.httpMethod || 'GET').toUpperCase();
-    const res = await axios.request({ url, httpMethod, data, headers, validateStatus: () => true });
-    return { code: res.status, data: res.data };
-  }
 }
 
 class N8NTester {
-  /**
-   * @param {Object} opts
-   * @param {string} opts.id - workflow id in n8n
-   * @param {string} opts.workflow - path to exported workflow JSON (the ORIGINAL)
-   * @param {string} [opts.credentials] - path to exported credentials JSON (optional)
-   */
-  constructor(opts) {
-    if (!opts || !opts.id || !opts.workflow) {
-      throw new Error('N8NTester requires { id, workflow }');
-    }
-    this.id = opts.id;
-    this.workflowPath = opts.workflow;
-    this.credentialsPath = opts.credentials || null;
-    this._runner = process.env.N8N_CONTAINER_NAME || null;
+  constructor(id, workflow) {
+    this.id = id;
+    this.workflowPath = workflow;
     this._tmpDir = path.join(os.tmpdir(), `n8n-tester-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-    this._credsPatch = []; // { name, data }
   }
 
   test() {
@@ -157,40 +98,11 @@ class N8NTester {
   }
 
   async restoreWorkflow() {
-    await runN8n({
-      runner: this._runner,
-      args: ['import:workflow', '--input', this.workflowPath, '--overwrite'],
-    });
+    await runN8n(
+      N8NClient.getContainer(),
+      ['import:workflow', '--input', this.workflowPath, '--overwrite'],
+    );
   }
-
-  /**
-   * Queue a credentials patch so that on import we overwrite with test values.
-   * (Caller supplies an exported credentials JSON file via constructor)
-   */
-  async addCredential(path, data) {
-    if (!this.credentialsPath) throw new Error('No credentials file provided to N8NTester constructor');
-    this._credsPatch.push({ path, data });
-  }
-
-async importCredentials() {
-  await fs.mkdir(this._tmpDir, { recursive: true });
-
-  for (const p of this._credsPatch) {
-    const absPath = path.join(this.credentialsPath, p.path);
-    let raw = await fs.readFile(absPath, "utf8");
-
-    Object.entries(p.data).forEach(([k, v]) => {
-      raw = raw.replaceAll(`$${k}`, v);
-    });
-
-    const out = path.join(this._tmpDir, path.basename(p.path));
-    await fs.writeFile(out, raw, "utf8");
-  }
-  await runN8n({
-    runner: this._runner,
-    args: ["import:credentials", "--separate", "--input", this._tmpDir, "--overwrite"],
-  });
-}
 }
 
 module.exports = N8NTester;
