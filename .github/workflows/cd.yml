@@ -14,6 +14,10 @@ permissions:
   id-token: write
   contents: read
 
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   deploy:
     name: 🚀 Deploy to Staging
@@ -42,6 +46,17 @@ jobs:
         #     workflows/*.json
         #     credentials/*.json
         #     tests/*.js
+
+      - name: 🔍 Verify container health
+        run: |
+          echo "🔍 Checking if $CONTAINER_NAME exists and is running..."
+          if ! docker inspect -f '{{.State.Running}}' $CONTAINER_NAME 2>/dev/null | grep -q true; then
+            echo "❌ Container $CONTAINER_NAME is not running or does not exist."
+            # show what containers are available for debugging
+            docker ps -a
+            exit 1
+          fi
+          echo "✅ Container $CONTAINER_NAME is running."
 
       - name: 📦 Stage changes into container
         run: |
@@ -199,9 +214,16 @@ jobs:
           echo "🔵 Rollback completed. Marking job as failed."
           exit 1
 
-      - name: 🧯 Show n8n logs on failure
-        if: failure()
-        run: docker logs n8n
+      - name: 📜 Save container logs as artifact
+        if: always()
+        run: docker logs $CONTAINER_NAME > n8n-container.log || echo "⚠️ Could not retrieve logs"
+      
+      - name: ⬆️ Upload logs to GitHub
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: n8n-logs
+          path: n8n-container.log
       
       - name: 🟢 Success Summary
         if: success()
