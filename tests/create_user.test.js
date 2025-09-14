@@ -163,7 +163,7 @@ describe('Test My Workflow', () => {
     );
   });
 
-  test.only('Wrong insertion into database - no username', async () => {
+  test('Wrong insertion into database - no username', async () => {
     const n8nTest = n8nTester.test();
 
     const user = crypto.randomUUID().replaceAll('-', '');
