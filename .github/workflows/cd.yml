@@ -3,11 +3,11 @@ name: n8n CD 🚀
 on:
   push:
     branches: [ main ]
-    paths:
-      - "workflows/**"
-      - "credentials/**"
-      - "tests/**"
-      - ".github/workflows/cd.yml"
+    # paths:
+    #   - "workflows/**"
+    #   - "credentials/**"
+    #   - "tests/**"
+    #   - ".github/workflows/cd.yml"
   workflow_dispatch: {}
 
 permissions:
@@ -37,10 +37,11 @@ jobs:
       - name: 🗂️ Get changed workflow files
         id: changed
         uses: tj-actions/changed-files@v44
-        with:
-          files: |
-            workflows/*.json
-            credentials/*.json
+        # with:
+        #   files: |
+        #     workflows/*.json
+        #     credentials/*.json
+        #     tests/*.js
 
       - name: 📦 Stage changes into container
         run: |
@@ -201,28 +202,36 @@ jobs:
       - name: 🧯 Show n8n logs on failure
         if: failure()
         run: docker logs n8n
-
+      
       - name: 🟢 Success Summary
         if: success()
         run: |
+          HEALTH_RESULT=$(curl -s -f "${HEALTH_URL}" || echo "❌ Failed to fetch health URL")
           {
             echo "## ✅ Deployment succeeded";
             echo "";
             echo "- Environment: **${ENV}**";
-            echo "- Health check: ${HEALTH_URL}";
+            echo "- Health check result:";
+            echo "\`\`\`json";
+            echo "${HEALTH_RESULT}";
+            echo "\`\`\`";
             echo "- Changed files: \`${{ steps.changed.outputs.all_changed_files || 'n/a' }}\`";
             echo "";
             echo "🎉 All stages passed (deploy + tests).";
           } >> "$GITHUB_STEP_SUMMARY"
-
+      
       - name: 🔴 Failure Summary
         if: failure()
         run: |
+          HEALTH_RESULT=$(curl -s -f "${HEALTH_URL}" || echo "❌ Failed to fetch health URL")
           {
             echo "## ❌ Deployment failed";
             echo "";
             echo "- Environment: **${ENV}**";
-            echo "- Health check: ${HEALTH_URL}";
+            echo "- Health check result:";
+            echo "\`\`\`json";
+            echo "${HEALTH_RESULT}";
+            echo "\`\`\`";
             echo "- Deploy step outcome: **${{ steps.deploy_step.outcome || 'n/a' }}**";
             echo "- Test step outcome: **${{ steps.test_step.outcome || 'n/a' }}**";
             echo "";

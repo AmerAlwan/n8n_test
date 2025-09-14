@@ -230,15 +230,7 @@
   "meta": {
     "templateCredsSetupCompleted": true
   },
-  "pinData": {
-    "Webhook": [
-      {
-        "json": {
-          "jwt": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InVzZXIxIiwiZXhwIjoxNzU2NTE2ODYzfQ.9xQrTkXN61aUUUMw6KICauo4aI6twDJECEqJXm0IzmM="
-        }
-      }
-    ]
-  },
+  "pinData": {},
   "versionId": "461971f7-3a1c-405c-ba63-b2c5963cc567",
   "triggerCount": 0,
   "tags": [],

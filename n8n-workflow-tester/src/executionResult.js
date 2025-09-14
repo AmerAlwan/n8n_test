@@ -2,9 +2,11 @@ class NodeResult {
   constructor(runDatum) {
     this._d = runDatum || null;
   }
+
   get executionStatus() {
     return this._d?.executionStatus || (this._d?.error ? 'error' : undefined);
   }
+
   get errorMessage() {
     return this._d?.error?.message;
   }
@@ -38,10 +40,14 @@ class ExecutionResult {
     return this._topError?.message || null;
   }
 
+  nodeExecuted(name) {
+    return name in this._runData;
+  }
+
   node(name) {
-    const arr = this._runData?.[name];
-    if (!arr || !arr.length) return new NodeResult(null);
-    return new NodeResult(arr[0]);
+    if (name in this._runData && this._runData[name].length > 0)
+      return new NodeResult(this._runData[name][0])
+      throw new Error("Node not in execution");
   }
 
   get lastNodeExecuted() {
