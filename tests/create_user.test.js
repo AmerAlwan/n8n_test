@@ -1,26 +1,12 @@
 /* eslint-disable jest/no-export, no-undef */
 const crypto = require('crypto');
 const { N8NTester } = require('../n8n-workflow-tester');
-// require('dotenv').config({ path: '.local.env' });
-
 const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();
 
-const credConfig = {
-    POSTGRES_ACCOUNT_USER: process.env.POSTGRES_ACCOUNT_USER,
-    POSTGRES_ACCOUNT_DATABASE: process.env.POSTGRES_ACCOUNT_DATABASE,
-    POSTGRES_ACCOUNT_HOST: process.env.POSTGRES_ACCOUNT_HOST,
-    POSTGRES_ACCOUNT_PORT: process.env.POSTGRES_ACCOUNT_PORT,
-    POSTGRES_ACCOUNT_PASSWORD: process.env.POSTGRES_ACCOUNT_PASSWORD
-};
-
-// The workflow id in n8n; keep this stable across imports
 const WORKFLOW_ID = 'YAHdeeXkYbwOOQJk';
 const WORKFLOW_PATH = process.env.WORKFLOWS_PATH + "/YAHdeeXkYbwOOQJk.json";
-const CREDS_PATH = process.env.CREDS_PATH;
-
-// If you want to run the webhook test, set an actual URL here or via env
 const BASE_URL = process.env.BASE_URL;
 
 const REGISTER_PATH = '/webhook/16bc0461-12ad-4933-bb1d-00e0a3fd8cd9';
@@ -43,27 +29,16 @@ async function sendRequest(path, method, body, headers = {}) {
   return { status: res.status, data };
 }
 
-// --- n8n tester instance ---
-const n8nTester = new N8NTester({
-  id: WORKFLOW_ID,
-  workflow: WORKFLOW_PATH,
-  credentials: CREDS_PATH
-});
+const n8nTester = new N8NTester(WORKFLOW_ID, WORKFLOW_PATH);
 
-jest.setTimeout(60_000); // n8n CLI + docker can be a bit slow
+jest.setTimeout(60_000);
 
 
 if (process.env.ENV === "DEV")
 describe('Test My Workflow', () => {
-  beforeAll(async () => {
-    await n8nTester.addCredential('postgres_account_credentials.json', credConfig);
-    await n8nTester.importCredentials();
-  });
-
   afterAll(async () => {
     await prisma.$disconnect();
   });
-
 
   beforeEach(async () => {
     await resetDatabase();
@@ -85,13 +60,11 @@ describe('Test My Workflow', () => {
       }
     };
 
-    // Use CLI path by injecting a Manual Trigger + Edit Fields into the workflow
     n8nTest.setTrigger('Webhook', webhookData);
 
     const output = await n8nTest.trigger();
     expect(output.executionStatus).toBe('success');
 
-    // Node traces
     expect(output.node('If').data).toStrictEqual(webhookData);
 
     expect(output.node('Hash Password').data).toHaveProperty("hashed_password");
@@ -100,7 +73,6 @@ describe('Test My Workflow', () => {
     expect(hashed_password).not.toBe(webhookData.body.password);
     expect(hashed_password.length).toBeGreaterThan(10);
 
-    // Remove Password node still contains user/email under *
     expect(output.node('Remove Password').data.username).toBe(webhookData.body.username);
     expect(output.node('Remove Password').data.email).toBe(webhookData.body.email);
     expect(output.node('Remove Password').data).not.toHaveProperty('hashed_password');
@@ -135,7 +107,6 @@ describe('Test My Workflow', () => {
       }
     };
 
-    // Replace the DB node with a Set node that emits a fake DB record
     n8nTest.mockNode('Insert rows in a table', {
       id: user,
       username: webhookData.body.username,
@@ -170,7 +141,6 @@ describe('Test My Workflow', () => {
       }
     };
 
-    // Replace the DB node with a Set node that emits a fake DB record
     n8nTest.mockNode('Remove Password',
       {
       "username": webhookData.body.username,

@@ -1,19 +1,8 @@
 const crypto = require('crypto');
 const { N8NTester } = require('../n8n-workflow-tester');
-
 const { PrismaClient } = require('@prisma/client'); 
 
 const prisma = new PrismaClient();
-
-jest.setTimeout(60_000);
-
-const credConfig = {
-    POSTGRES_ACCOUNT_USER: process.env.POSTGRES_ACCOUNT_USER,
-    POSTGRES_ACCOUNT_DATABASE: process.env.POSTGRES_ACCOUNT_DATABASE,
-    POSTGRES_ACCOUNT_HOST: process.env.POSTGRES_ACCOUNT_HOST,
-    POSTGRES_ACCOUNT_PORT: process.env.POSTGRES_ACCOUNT_PORT,
-    POSTGRES_ACCOUNT_PASSWORD: process.env.POSTGRES_ACCOUNT_PASSWORD
-};
 
 const REGISTER_WORKFLOW_ID = 'YAHdeeXkYbwOOQJk';
 const LOGIN_WORKFLOW_ID = '8QAHX43zY6aIlsqj';
@@ -25,37 +14,18 @@ const LOGIN_WORKFLOW_PATH = process.env.WORKFLOWS_PATH + '/8QAHX43zY6aIlsqj.json
 const GET_USER_EMAIL_WORKFLOW_PATH = process.env.WORKFLOWS_PATH + '/RqijrHvyKSEwP50q.json';
 const AUTHENTICATE_USER_WORKFLOW_PATH = process.env.WORKFLOWS_PATH + '/8xNhUaWFEW8XHn3t.json';
 
-const CREDS_PATH = process.env.CREDS_PATH;
-
 const BASE_URL = process.env.BASE_URL;
 
 const LOGIN_PATH    = '/webhook/0691ab98-d0a1-431a-a8a2-082fc85ff260';
 const REGISTER_PATH    = '/webhook/16bc0461-12ad-4933-bb1d-00e0a3fd8cd9';
 const EMAIL_PATH = '/webhook/2a93d317-0a2b-4bc4-a95b-2825084d0055';
 
-const registerTester = new N8NTester({
-  id: REGISTER_WORKFLOW_ID,
-  workflow: REGISTER_WORKFLOW_PATH,
-  credentials: CREDS_PATH
-});
+const registerTester = new N8NTester(REGISTER_WORKFLOW_ID, REGISTER_WORKFLOW_PATH);
+const loginTester = new N8NTester(LOGIN_WORKFLOW_ID, LOGIN_WORKFLOW_PATH);
+const getUserEmailTester = new N8NTester(GET_USER_EMAIL_WORKFLOW_ID, GET_USER_EMAIL_WORKFLOW_PATH);
+const authenticateUserTester = new N8NTester(AUTHENTICATE_USER_WORKFLOW_ID, AUTHENTICATE_USER_WORKFLOW_PATH);
 
-const loginTester = new N8NTester({
-  id: LOGIN_WORKFLOW_ID,
-  workflow: LOGIN_WORKFLOW_PATH,
-  credentials: CREDS_PATH
-});
-
-const getUserEmailTester = new N8NTester({
-  id: GET_USER_EMAIL_WORKFLOW_ID,
-  workflow: GET_USER_EMAIL_WORKFLOW_PATH,
-  credentials: CREDS_PATH
-});
-
-const authenticateUserTester = new N8NTester({
-  id: AUTHENTICATE_USER_WORKFLOW_ID,
-  workflow: AUTHENTICATE_USER_WORKFLOW_PATH,
-  credentials: CREDS_PATH 
-});
+jest.setTimeout(60000);
 
 const testUser = {
     username: "testuser",
@@ -100,198 +70,182 @@ async function createUserInDb(user) {
   });
 }
 
-async function clearUsers() {
-  return await prisma.users.deleteMany();
-}
-
 if (process.env.ENV === "DEV") {
+  describe('Test user login workflow', () => {
+      beforeAll(async () => {
+          await createUserInDb(testUser);
+      });
+      afterEach(async () => {
+          await registerTester.restoreWorkflow();
+          await loginTester.restoreWorkflow();
+      }); 
 
-beforeAll(async () => {
-    await registerTester.addCredential('postgres_account_credentials.json', credConfig);
-    await loginTester.addCredential('postgres_account_credentials.json', credConfig);
-    await getUserEmailTester.addCredential('postgres_account_credentials.json', credConfig);
-    await authenticateUserTester.addCredential('postgres_account_credentials.json', credConfig); 
-    await registerTester.importCredentials();
-    await loginTester.importCredentials();
-    await authenticateUserTester.importCredentials();
-    await getUserEmailTester.importCredentials();
-});
+      test('Correct login', async () => {
+          const n8nTest = loginTester.test(); 
+          const data = {
+              body: {
+                  username: testUser.username,
+                  password: testUser.password
+              }
+          }
+          n8nTest.setTrigger('Webhook', data);
+          const output = await n8nTest.trigger();
+          
+          expect(output.node('If user exists').data).toBeDefined();   
+          expect(output.node('If user exists').data.username).toBe(testUser.username);
 
-describe('Test user login workflow', () => {
-    beforeAll(async () => {
-        await createUserInDb(testUser);
-    });
-    afterEach(async () => {
-        await registerTester.restoreWorkflow();
-        await loginTester.restoreWorkflow();
-    }); 
+          expect(output.node('Merge').data).toHaveProperty('login_hashed_password');
+          expect(output.node('Merge').data).toHaveProperty('actual_hashed_password');
 
-    test('Correct login', async () => {
-        const n8nTest = loginTester.test(); 
-        const data = {
-            body: {
-                username: testUser.username,
-                password: testUser.password
-            }
-        }
-        n8nTest.setTrigger('Webhook', data);
-        const output = await n8nTest.trigger();
-        
-        expect(output.node('If user exists').data).toBeDefined();   
-        expect(output.node('If user exists').data.username).toBe(testUser.username);
+          expect(output.node('If hashed passwords equal').data).toBeDefined();
 
-        expect(output.node('Merge').data).toHaveProperty('login_hashed_password');
-        expect(output.node('Merge').data).toHaveProperty('actual_hashed_password');
+          expect(output.node('Assemble JWT token').data).toHaveProperty('jwt');
 
-        expect(output.node('If hashed passwords equal').data).toBeDefined();
+          const exp = JSON.parse(Buffer.from(output.node('Create payload').data.payload, 'base64url').toString('utf8')).exp;
 
-        expect(output.node('Assemble JWT token').data).toHaveProperty('jwt');
+          const expected_jwt = calculateJWT(
+              { alg: "HS256", typ: "JWT" },
+              { username: testUser.username, exp: exp },
+              "secret"
+          );
+          expect(output.node('Respond to Webhook1').data.jwt).toBe(expected_jwt);
+      });
+  });
 
-        const exp = JSON.parse(Buffer.from(output.node('Create payload').data.payload, 'base64url').toString('utf8')).exp;
+  describe('Test authenticate user workflow', () => {
+      beforeAll(async () => {
+          await createUserInDb(testUser);
+      });
 
-        const expected_jwt = calculateJWT(
-            { alg: "HS256", typ: "JWT" },
-            { username: testUser.username, exp: exp },
-            "secret"
-        );
-        expect(output.node('Respond to Webhook1').data.jwt).toBe(expected_jwt);
-    });
-});
+      afterEach(async () => {
+          await authenticateUserTester.restoreWorkflow();
+      });
 
-describe('Test authenticate user workflow', () => {
-    beforeAll(async () => {
-        await createUserInDb(testUser);
-    });
+      test('Correct authentication', async () => {
+          const n8nTest = authenticateUserTester.test();
+          const jwt_token = calculateJWT(
+              { alg: "HS256", typ: "JWT" },
+              { username: testUser.username, exp: Math.floor(Date.now() / 1000) + (60 * 60) },
+              "secret"
+          );
+          n8nTest.setTrigger('When Executed by Another Workflow', {'jwt': jwt_token});
+          const output = await n8nTest.trigger();
 
-    afterEach(async () => {
-        await authenticateUserTester.restoreWorkflow();
-    });
+          expect(output.executionStatus).toBe('success');
+          expect(output.node('Return username').data).toBeDefined();
+          expect(output.node('Return username').data.authenticated).toBe(true);
+          expect(output.node('Return username').data.username).toBe(testUser.username);
+      });
 
-    test('Correct authentication', async () => {
-        const n8nTest = authenticateUserTester.test();
-        const jwt_token = calculateJWT(
-            { alg: "HS256", typ: "JWT" },
-            { username: testUser.username, exp: Math.floor(Date.now() / 1000) + (60 * 60) },
-            "secret"
-        );
-        n8nTest.setTrigger('When Executed by Another Workflow', {'jwt': jwt_token});
-        const output = await n8nTest.trigger();
+      test('Expired token', async () => {
+          const n8nTest = authenticateUserTester.test(); 
+          const jwt_token = calculateJWT(
+              { alg: "HS256", typ: "JWT" },
+              { username: testUser.username, exp: Math.floor(Date.now() / 1000) - 5 * (60 * 60 * 24) },
+              "secret"
+          );
+          n8nTest.setTrigger('When Executed by Another Workflow', {'jwt': jwt_token});
+          const output = await n8nTest.trigger();
 
-        expect(output.executionStatus).toBe('success');
-        expect(output.node('Return username').data).toBeDefined();
-        expect(output.node('Return username').data.authenticated).toBe(true);
-        expect(output.node('Return username').data.username).toBe(testUser.username);
-    });
+          expect(output.executionStatus).toBe('success');
+          expect(output.node('Return unauthenticated').data).toBeDefined();
+          expect(output.node('Return unauthenticated').data.authenticated).toBe(false);
+      });
 
-    test('Expired token', async () => {
-        const n8nTest = authenticateUserTester.test(); 
-        const jwt_token = calculateJWT(
-            { alg: "HS256", typ: "JWT" },
-            { username: testUser.username, exp: Math.floor(Date.now() / 1000) - 5 * (60 * 60 * 24) },
-            "secret"
-        );
-        n8nTest.setTrigger('When Executed by Another Workflow', {'jwt': jwt_token});
-        const output = await n8nTest.trigger();
+      test('Invalid token', async () => {
+          const n8nTest = authenticateUserTester.test(); 
+          const jwt_token = "invalid.token.value";
+          n8nTest.setTrigger('When Executed by Another Workflow', {'jwt': jwt_token});
+          const output = await n8nTest.trigger(); 
+          
+          expect(output.executionStatus).toBe('success');
+          expect(output.node('Return unauthenticated').data).toBeDefined();
+          expect(output.node('Return unauthenticated').data.authenticated).toBe(false);
+      });
+  });
 
-        expect(output.executionStatus).toBe('success');
-        expect(output.node('Return unauthenticated').data).toBeDefined();
-        expect(output.node('Return unauthenticated').data.authenticated).toBe(false);
-    });
+  describe('Test get user email workflow', () => {
+      beforeAll(async () => {
+          await createUserInDb(testUser);
+      });
 
-    test('Invalid token', async () => {
-        const n8nTest = authenticateUserTester.test(); 
-        const jwt_token = "invalid.token.value";
-        n8nTest.setTrigger('When Executed by Another Workflow', {'jwt': jwt_token});
-        const output = await n8nTest.trigger(); 
-        
-        expect(output.executionStatus).toBe('success');
-        expect(output.node('Return unauthenticated').data).toBeDefined();
-        expect(output.node('Return unauthenticated').data.authenticated).toBe(false);
-    });
-});
+      afterEach(async () => {
+          await getUserEmailTester.restoreWorkflow();
+      });
 
-describe('Test get user email workflow', () => {
-    beforeAll(async () => {
-        await createUserInDb(testUser);
-    });
+      test('Correct get user email', async () => {
+          const n8nTest = getUserEmailTester.test();
+          const jwt_token = calculateJWT(
+              { alg: "HS256", typ: "JWT" },
+              { username: testUser.username, exp: Math.floor(Date.now() / 1000) + (60 * 60) },
+              "secret"
+          );
+          n8nTest.setTrigger('Webhook', {'body': {'jwt': jwt_token}});
+          const output = await n8nTest.trigger();
+          expect(output.executionStatus).toBe('success');
+          expect(output.node('Return email').data).toBeDefined(); 
+          expect(output.node('Return email').data.email).toBe(testUser.email);
+      });
+      test('Invalid token get user email', async () => {
+          const n8nTest = getUserEmailTester.test();
+          const jwt_token = "invalid.token.value";
+          n8nTest.setTrigger('Webhook', {'body': {'jwt': jwt_token}});
+          const output = await n8nTest.trigger();
+          expect(output.executionStatus).toBe('success');
+          expect(output.node('Return unauthorized').data).toBeDefined();
+          expect(output.node('Return unauthorized').data.authenticated).toBe(false);
+      });
+  });
 
-    afterEach(async () => {
-        await getUserEmailTester.restoreWorkflow();
-    });
+  describe('Test all workflows combined', () => {
+      beforeAll(async () => {
+          await createUserInDb(testUser);
+      });
 
-    test('Correct get user email', async () => {
-        const n8nTest = getUserEmailTester.test();
-        const jwt_token = calculateJWT(
-            { alg: "HS256", typ: "JWT" },
-            { username: testUser.username, exp: Math.floor(Date.now() / 1000) + (60 * 60) },
-            "secret"
-        );
-        n8nTest.setTrigger('Webhook', {'body': {'jwt': jwt_token}});
-        const output = await n8nTest.trigger();
-        expect(output.executionStatus).toBe('success');
-        expect(output.node('Return email').data).toBeDefined(); 
-        expect(output.node('Return email').data.email).toBe(testUser.email);
-    });
-    test('Invalid token get user email', async () => {
-        const n8nTest = getUserEmailTester.test();
-        const jwt_token = "invalid.token.value";
-        n8nTest.setTrigger('Webhook', {'body': {'jwt': jwt_token}});
-        const output = await n8nTest.trigger();
-        expect(output.executionStatus).toBe('success');
-        expect(output.node('Return unauthorized').data).toBeDefined();
-        expect(output.node('Return unauthorized').data.authenticated).toBe(false);
-    });
-});
+      afterEach(async () => {
+          await registerTester.restoreWorkflow();
+          await loginTester.restoreWorkflow();
+          await getUserEmailTester.restoreWorkflow();
+          await authenticateUserTester.restoreWorkflow();
+      });
 
-describe('Test all workflows combined', () => {
-    beforeAll(async () => {
-        await createUserInDb(testUser);
-    });
+      test('Correct login and get user email', async () => {
+          const loginTest = loginTester.test();
 
-    afterEach(async () => {
-        await registerTester.restoreWorkflow();
-        await loginTester.restoreWorkflow();
-        await getUserEmailTester.restoreWorkflow();
-        await authenticateUserTester.restoreWorkflow();
-    });
+          const loginData = {
+              body: {
+                  username: testUser.username,
+                  password: testUser.password
+              }
+          };
+          loginTest.setTrigger('Webhook', loginData);
+          
+          const loginOutput = await loginTest.trigger();
 
-    test('Correct login and get user email', async () => {
-        const loginTest = loginTester.test();
+          expect(loginOutput.executionStatus).toBe('success');
 
-        const loginData = {
-            body: {
-                username: testUser.username,
-                password: testUser.password
-            }
-        };
-        loginTest.setTrigger('Webhook', loginData);
-        
-        const loginOutput = await loginTest.trigger();
+          const jwt_token = loginOutput.node('Respond to Webhook1').data.jwt;
 
-        expect(loginOutput.executionStatus).toBe('success');
+          const authenticateTest = authenticateUserTester.test();
 
-        const jwt_token = loginOutput.node('Respond to Webhook1').data.jwt;
+          authenticateTest.setTrigger('When Executed by Another Workflow', {'jwt': jwt_token});
+          const authenticateOutput = await authenticateTest.trigger();
 
-        const authenticateTest = authenticateUserTester.test();
+          expect(authenticateOutput.executionStatus).toBe('success');
+          expect(authenticateOutput.node('Return username').data).toBeDefined();
+          expect(authenticateOutput.node('Return username').data.username).toBe(testUser.username);
 
-        authenticateTest.setTrigger('When Executed by Another Workflow', {'jwt': jwt_token});
-        const authenticateOutput = await authenticateTest.trigger();
+          const getUserEmailTest = getUserEmailTester.test();
 
-        expect(authenticateOutput.executionStatus).toBe('success');
-        expect(authenticateOutput.node('Return username').data).toBeDefined();
-        expect(authenticateOutput.node('Return username').data.username).toBe(testUser.username);
+          getUserEmailTest.setTrigger('Webhook', {'body': {'jwt': jwt_token}});
+          
+          const getUserEmailOutput = await getUserEmailTest.trigger();
 
-        const getUserEmailTest = getUserEmailTester.test();
-
-        getUserEmailTest.setTrigger('Webhook', {'body': {'jwt': jwt_token}});
-        
-        const getUserEmailOutput = await getUserEmailTest.trigger();
-
-        expect(getUserEmailOutput.executionStatus).toBe('success');
-        expect(getUserEmailOutput.node('Return email').data).toBeDefined();
-        expect(getUserEmailOutput.node('Return email').data.email).toBe(testUser.email);    
-    }, 180000);
-});
+          expect(getUserEmailOutput.executionStatus).toBe('success');
+          expect(getUserEmailOutput.node('Return email').data).toBeDefined();
+          expect(getUserEmailOutput.node('Return email').data.email).toBe(testUser.email);    
+      }, 180000);
+  });
 }
 
 if (process.env.ENV === 'STAGING') {
@@ -343,11 +297,9 @@ if (process.env.ENV === 'STAGING') {
         password: user,
       };
 
-      // 1) Register
       const registerResp = await sendRequest(REGISTER_PATH, 'POST', payload);
       expect([200, 201]).toContain(registerResp.status);
 
-      // 2) Login
       const loginResp = await sendRequest(LOGIN_PATH, 'POST', {
         username: payload.username,
         password: payload.password,
