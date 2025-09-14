@@ -78,6 +78,9 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            n8n-workflow-tester/package-lock.json
 
       - name: 📦 Install dependencies (n8n workspace)
         run: npm ci
@@ -103,7 +106,7 @@ jobs:
           docker exec -u root n8n sh -lc '
             set -euo pipefail
             cd /workspace
-            [ -f .env ] && set -a && . ./.env && set +a
+            source .env
             npx prisma migrate deploy
             npx prisma generate
           '
@@ -118,10 +121,17 @@ jobs:
         run: |
           docker exec -u root n8n sh -lc '
             set -e
-            [ -f /workspace/.env ] && set -a && . /workspace/.env && set +a
             cd /workspace
-            npm test
+            source .env
+            npm test -- --ci --reporters=default --reporters=jest-junit
           '
+
+      - name: 📊 Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jest-results
+          path: ./junit.xml
 
       - name: 🧯 Show n8n logs on failure
         if: failure()
