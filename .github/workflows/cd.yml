@@ -3,11 +3,11 @@ name: n8n CD 🚀
 on:
   push:
     branches: [ main ]
-    paths:
-      - "workflows/**"
-      - "credentials/**"
-      - "tests/**"
-      - ".github/workflows/cd.yml"
+    # paths:
+    #   - "workflows/**"
+    #   - "credentials/**"
+    #   - "tests/**"
+    #   - ".github/workflows/cd.yml"
   workflow_dispatch: {}
 
 permissions:
@@ -37,11 +37,11 @@ jobs:
       - name: 🗂️ Get changed workflow files
         id: changed
         uses: tj-actions/changed-files@v44
-        with:
-          files: |
-            workflows/*.json
-            credentials/*.json
-            tests/*.js
+        # with:
+        #   files: |
+        #     workflows/*.json
+        #     credentials/*.json
+        #     tests/*.js
 
       - name: 📦 Stage changes into container
         run: |
