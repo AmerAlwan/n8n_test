@@ -41,6 +41,7 @@ jobs:
           files: |
             workflows/*.json
             credentials/*.json
+            tests/*.js
 
       - name: 📦 Stage changes into container
         run: |
