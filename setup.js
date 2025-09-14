@@ -25,11 +25,13 @@ const postgres_creds = Object.fromEntries(
     );
 const postgres_creds_path = path.join(CREDS_PATH, 'postgres_account_credentials.json');
 
-(async () => {
-  try {
-    await N8NClient.addCredential(postgres_creds_path, postgres_creds);
-    await N8NClient.importCredentials();
-  } catch (error) {
-    console.error('Error importing credentials', error);
-  }
-})();
+if (process.env.ENV === "DEV") {
+  (async () => {
+    try {
+      await N8NClient.addCredential(postgres_creds_path, postgres_creds);
+      await N8NClient.importCredentials();
+    } catch (error) {
+      console.error('Error importing credentials', error);
+    }
+  })();
+}
