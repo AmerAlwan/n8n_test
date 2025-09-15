@@ -5,8 +5,7 @@ const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();
 
-const WORKFLOW_ID = 'YAHdeeXkYbwOOQJk';
-const WORKFLOW_PATH = process.env.WORKFLOWS_PATH + "/YAHdeeXkYbwOOQJk.json";
+const WORKFLOW_PATH = process.env.WORKFLOWS_PATH + "/register_user.json";
 const BASE_URL = process.env.BASE_URL;
 
 const REGISTER_PATH = '/webhook/16bc0461-12ad-4933-bb1d-00e0a3fd8cd9';
@@ -29,7 +28,7 @@ async function sendRequest(path, method, body, headers = {}) {
   return { status: res.status, data };
 }
 
-const n8nTester = new N8NTester(WORKFLOW_ID, WORKFLOW_PATH);
+const n8nTester = new N8NTester(WORKFLOW_PATH);
 
 jest.setTimeout(60_000);
 

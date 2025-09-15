@@ -23,7 +23,7 @@ const CREDS_PATH = process.env.CREDS_PATH;
 const postgres_creds = Object.fromEntries(
         Object.entries(process.env).filter(([KeyboardEvent, value]) => KeyboardEvent.includes('POSTGRES'))
     );
-const postgres_creds_path = path.join(CREDS_PATH, 'postgres_account_credentials.json');
+const postgres_creds_path = path.join(CREDS_PATH, 'postgres_account.json');
 
 if (process.env.ENV === "DEV") {
   (async () => {
