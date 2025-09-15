@@ -1,6 +1,6 @@
 {
   "createdAt": "2025-08-20T06:40:59.116Z",
-  "updatedAt": "2025-09-15T02:34:56.559Z",
+  "updatedAt": "2025-09-15T03:26:56.679Z",
   "id": "YAHdeeXkYbwOOQJk",
   "name": "Register user",
   "active": false,
@@ -247,19 +247,16 @@
     },
     {
       "parameters": {
-        "respondWith": "noData",
-        "options": {
-          "responseCode": 400
-        }
+        "errorMessage": "Invalid parameters"
       },
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.4,
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
       "position": [
-        624,
+        640,
         -48
       ],
-      "id": "65004640-0daa-40ac-91ed-fe45bc68f890",
-      "name": "Return error"
+      "id": "29fd2f8a-c198-4bc4-9081-23af9c7127ca",
+      "name": "Stop and Error"
     }
   ],
   "connections": {
@@ -274,7 +271,7 @@
         ],
         [
           {
-            "node": "Return error",
+            "node": "Stop and Error",
             "type": "main",
             "index": 0
           }
@@ -334,7 +331,7 @@
     "templateCredsSetupCompleted": true
   },
   "pinData": {},
-  "versionId": "30cf98a8-2367-4688-adf1-c6bc83b75e2a",
+  "versionId": "aa9075b6-afa1-4c63-a9a4-ed6cf0362075",
   "triggerCount": 1,
   "tags": [],
   "shared": [
