@@ -87,8 +87,7 @@ class N8NTest {
 }
 
 class N8NTester {
-  constructor(id, workflow) {
-    this.id = id;
+  constructor(workflow) {
     this.workflowPath = workflow;
     this._tmpDir = path.join(os.tmpdir(), `n8n-tester-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   }

@@ -4,15 +4,10 @@ const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();
 
-const REGISTER_WORKFLOW_ID = 'YAHdeeXkYbwOOQJk';
-const LOGIN_WORKFLOW_ID = '8QAHX43zY6aIlsqj';
-const GET_USER_EMAIL_WORKFLOW_ID = 'RqijrHvyKSEwP50q';
-const AUTHENTICATE_USER_WORKFLOW_ID = '8xNhUaWFEW8XHn3t';
-
-const REGISTER_WORKFLOW_PATH = process.env.WORKFLOWS_PATH + '/YAHdeeXkYbwOOQJk.json';
-const LOGIN_WORKFLOW_PATH = process.env.WORKFLOWS_PATH + '/8QAHX43zY6aIlsqj.json';
-const GET_USER_EMAIL_WORKFLOW_PATH = process.env.WORKFLOWS_PATH + '/RqijrHvyKSEwP50q.json';
-const AUTHENTICATE_USER_WORKFLOW_PATH = process.env.WORKFLOWS_PATH + '/8xNhUaWFEW8XHn3t.json';
+const REGISTER_WORKFLOW_PATH = process.env.WORKFLOWS_PATH + '/register_user.json';
+const LOGIN_WORKFLOW_PATH = process.env.WORKFLOWS_PATH + '/login_user.json';
+const GET_USER_EMAIL_WORKFLOW_PATH = process.env.WORKFLOWS_PATH + '/get_user_email.json';
+const AUTHENTICATE_USER_WORKFLOW_PATH = process.env.WORKFLOWS_PATH + '/authenticate_jwt_token.json';
 
 const BASE_URL = process.env.BASE_URL;
 
@@ -20,10 +15,10 @@ const LOGIN_PATH    = '/webhook/0691ab98-d0a1-431a-a8a2-082fc85ff260';
 const REGISTER_PATH    = '/webhook/16bc0461-12ad-4933-bb1d-00e0a3fd8cd9';
 const EMAIL_PATH = '/webhook/2a93d317-0a2b-4bc4-a95b-2825084d0055';
 
-const registerTester = new N8NTester(REGISTER_WORKFLOW_ID, REGISTER_WORKFLOW_PATH);
-const loginTester = new N8NTester(LOGIN_WORKFLOW_ID, LOGIN_WORKFLOW_PATH);
-const getUserEmailTester = new N8NTester(GET_USER_EMAIL_WORKFLOW_ID, GET_USER_EMAIL_WORKFLOW_PATH);
-const authenticateUserTester = new N8NTester(AUTHENTICATE_USER_WORKFLOW_ID, AUTHENTICATE_USER_WORKFLOW_PATH);
+const registerTester = new N8NTester(REGISTER_WORKFLOW_PATH);
+const loginTester = new N8NTester(LOGIN_WORKFLOW_PATH);
+const getUserEmailTester = new N8NTester(GET_USER_EMAIL_WORKFLOW_PATH);
+const authenticateUserTester = new N8NTester(AUTHENTICATE_USER_WORKFLOW_PATH);
 
 jest.setTimeout(60000);
 
