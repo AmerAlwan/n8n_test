@@ -180,7 +180,7 @@ test('Wrong insertion into database - no username', async () => {
 
     expect(output.executionStatus).toBe('success');
     expect(output.nodeExecuted('Respond to Webhook')).toBe(false);
-    expect(output.nodeExecuted('Respond error')).toBe(true);
+    expect(output.nodeExecuted('Return error')).toBe(true);
   });
 });
 
