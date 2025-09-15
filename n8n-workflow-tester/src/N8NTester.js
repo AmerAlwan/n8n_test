@@ -1,6 +1,7 @@
 const os = require('os');
 const path = require('path');
 const fs = require('fs/promises');
+const fsSync = require('fs')
 const { runN8n } = require('./cliUtils');
 const { extractLastJsonObject } = require('./jsonExtract');
 const { ExecutionResult } = require('./executionResult');
@@ -100,7 +101,7 @@ class N8NTester {
 getWorkflowId(filePath) {
   try {
     const absPath = path.resolve(filePath);
-    const raw = fs.readFileSync(absPath, "utf-8");
+    const raw = fsSync.readFileSync(absPath, "utf-8");
     const json = JSON.parse(raw);
 
     if (!json.id) {
