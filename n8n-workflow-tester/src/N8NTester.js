@@ -89,12 +89,31 @@ class N8NTest {
 class N8NTester {
   constructor(workflow) {
     this.workflowPath = workflow;
+    this.id = this.getWorkflowId(workflow);
     this._tmpDir = path.join(os.tmpdir(), `n8n-tester-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   }
 
   test() {
     return new N8NTest(this);
   }
+
+getWorkflowId(filePath) {
+  try {
+    const absPath = path.resolve(filePath);
+    const raw = fs.readFileSync(absPath, "utf-8");
+    const json = JSON.parse(raw);
+
+    if (!json.id) {
+      console.warn(`No "id" field found in workflow file: ${filePath}`);
+      return null;
+    }
+
+    return json.id;
+  } catch (err) {
+    console.error(`Failed to read or parse workflow file: ${filePath}`, err.message);
+    return null;
+  }
+}
 
   async restoreWorkflow() {
     await runN8n(
