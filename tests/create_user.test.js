@@ -177,15 +177,10 @@ describe('Test My Workflow', () => {
     n8nTest.setTrigger('Webhook', webhookData);
 
     const output = await n8nTest.trigger();
-
-    expect(output.executionStatus).toBe('error');
-	  expect(output.errorMessage).toBe('Invalid parameters');
-	
     expect(output.node('If').getData(1)).toStrictEqual(webhookData);
-
-    const stop = output.node('Stop and Error');
-    expect(stop.executionStatus).toBe('error');
-    expect(stop.errorMessage).toBe('Invalid parameters');
+    expect(output.executionStatus).toBe('success')
+    expect(output.nodeExecuted('Respond error')).toBe(true);
+    expect(output.nodeExecuted('Respond to Webhook')).toBe(false);
   });
 });
 
@@ -223,6 +218,33 @@ if (process.env.ENV === 'STAGING') {
       await prisma.users.delete({
         where: { id: dbUser.id },
       });
+    });
+
+        
+test('Wrong insertion into database with webhook', async () => {
+      const user = crypto.randomUUID().replaceAll('-', '');
+      const payload = {
+        username: user,
+        password: user,
+      };
+
+      const response = await sendRequest(REGISTER_PATH, 'POST', payload);
+
+      expect(response.status).toBe(400);
+
+      // Verify user is in the DB
+      const dbUser = await prisma.users.findFirst({
+        where: { username: payload.username },
+        select: { id: true, username: true, email: true },
+      });
+
+      if (dbUser) {
+        // delete user in case test passed and user was created
+        await prisma.users.delete({
+          where: { id: dbUser.id },
+        });
+         throw new Error("User was created in the database");
+      }
     });
   });
 }
